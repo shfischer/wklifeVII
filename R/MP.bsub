@@ -1,0 +1,25 @@
+#!/bin/sh
+#BSUB -q cefas-ib
+#BSUB -P BX007
+#BSUB -n 100
+#BSUB -x
+#BSUB -R 'span[ptile=28]'
+#BSUB -J MP
+#BSUB -oo reports/MP-%J.out
+#BSUB -eo reports/MP-%J.err
+#BSUB -B
+#BSUB -N
+
+. /etc/profile
+
+module purge
+
+module load mpi/openmpi/2.1.0/gcc/mellanox  R/3.4.0/gcc-mellanox
+
+cd /gpfs/home/USER_NAME/git/2017-spictandwklife-mse/stdmse/R
+
+echo "got $LSB_DJOB_NUMPROC slots"
+
+mpirun -np $LSB_DJOB_NUMPROC R CMD BATCH --vanilla --quiet '--args n_cores=100 scn_start=913 scn_end=1032 n_parts=5 cluster_type=2' MP.R 
+
+echo "done!"
