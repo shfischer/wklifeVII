@@ -1,0 +1,35 @@
+﻿name,common,area,stock,sex,a,b,lmax,linf,l50,a50,t0,k,source a,source b,Lmax,source Linf,source L50,source A50,source t0,source K,Comment
+Clupea harengus,Herring,Celtic Seas,her-nis,F,0.0048,3.198,,33.000,23,,,0.606,Silva et al 2013,Silva et al 2013,,Thorpe etal 2015,Thorpe etal 2015,,,Thorpe etal 2015,
+Pollachius pollachius,Pollack,North Sea,pol-nsea,C,0.0076,3.069,,85.600,47.10,,,0.19,Silva et al 2013,Silva et al 2013,,Pauley 1978,Alonso-Fernandez et al 2013,,,Pauley 1978,L50 from Galicia
+Molva molva,Ling,Widely,lin-comb,C,0.0036,3.108,,119.000,74.00,7.20,,0.14,Silva et al 2013,Silva et al 2013,,Magnussen 2007,Magnussen 2007,,,Magnussen 2007,
+Sebastes norvegicus,Rose fish,Northern,smn-con,C,0.0178,2.972,,50.200,40.30,,0.08,0.11,Silva et al 2013,Silva et al 2013,,Nedreaas 1990,Ni & Templeman 1985,,Nedreaas 1990,Nedreaas 1990,
+Mullus surmuletus,Red mullet,Celtic Seas,mut-comb,F,0.0057,3.243,,47.500,16.90,,,0.21,Mahe et al 2013,Mahe et al 2013,,Mahe et al 2013,Mahe et al 2013,,,Mahe et al 2013,S North Sea and Channel data
+Scopthalmus maximus,Turbot,North Sea,tur-nsea,F,0.0149,3.079,,66.700,34.20,2.20,0.29,0.32,Silva et al 2013,Silva et al 2013,,Van der Hammen et al 2013,Van der Hammen et al 2013,Van der Hammen et al 2013,Van der Hammen et al 2013,Van der Hammen et al 2013,
+Microstomus kitt,Lemon sole,North Sea,lem-nsea,C,0.0123,2.971,,37.000,27,,,0.42,Thorpe etal 2015,Thorpe etal 2015,,Thorpe etal 2015,Thorpe etal 2015,,,Thorpe etal 2015,
+Lepidorhombus whiffiagonis,Megrim,North Sea,meg-4a6a,C,0.0022,3.3433,,54.000,23.00,3.00,,0.12,Silva et al 2013,Silva et al 2013,,Jennings et al 1999,Jennings et al 1999,Jennings et al 1999,,Jennings et al 1999,
+Ammodytes spp.,Sandeels,North Sea,san-ns4,C,0.0049,2.783,,24.000,12,,,1,Thorpe etal 2015,Thorpe etal 2015,,Thorpe etal 2015,Thorpe etal 2015,,,Thorpe etal 2015,
+Pleuronectes platessa,Plaice,Celtic Seas,ple-celt,F,0.0110,2.958,,48.000,22.90,,,0.23,Silva et al 2013,Silva et al 2013,,van Walraven et al 2010,van Walraven et al 2010,,,van Walraven et al 2010,North Sea data
+Merlangius merlangus,Whiting,Celtic Seas,whg-7e-k,F,0.0103,2.395,,38.000,28.00,,-1.01,0.38,Hehir 2003,Hehir 2003,,Hehir 2003,Hehir 2003,,Hehir 2003,Hehir 2003,
+Melanogrammus aeglefinus,Haddock,Celtic Seas,had-iris,C,0.0113,2.96,,79.900,,2.00,-0.36,0.20,Silva et al 2013,Silva et al 2013,,"WGNSDS2007, VIIa",,"WGNSDS2007, VIIa","WGNSDS2007, VIIa","WGNSDS2007, VIIa",Irish Sea data
+Lophius piscatorius,White anglerfish,Celtic Seas,ang-78ab,C,0.0198,2.895,133.10,105.555,73.00,,-0.38,0.18,Crozier1989,Crozier1989,Crozier1989,Crozier1989,Alfonso-Diaz and Hislop 2006,,Crozier1989,Crozier1989,L50 Scotland data
+Lophius piscatorius,White anglerfish,North Sea,ang-ivvi,C,0.0297,2.841,,106.000,61,,,0.18,Thorpe etal 2015,Thorpe etal 2015,,Thorpe etal 2015,Thorpe etal 2015,,,Thorpe etal 2015,
+Nephrops,Shellfish,Biscay-Iberia,nep-2829,M,0.00028,3.229,,70,28.4,,,0.2,WKLIFE_V_2015,WKLIFE_V_2015,,WKLIFE_V_2015,WKLIFE_V_2015,,,WKLIFE_V_2015,NB values in mm
+Scyliorhinus canicula,Lesserspotted dogfish,Celtic Seas,syc27.67,F,0.0019,3.1541,70.00,75.140,57.00,7.90,-0.96,0.15,Silva et al 2013,Silva et al 2013,Ivory et al 2005,Ivory et al 2005,Ivory et al 2005,Ivory et al 2005,Ivory et al 2005,Ivory et al 2005,
+Scyliorhinus canicula,Lesserspotted dogfish,Biscay-Iberia,syc27.8c,F,0.0022,3.119,68.00,66.200,59.10,,-0.71,0.23,Silva et al 2013,Silva et al 2013,Rodriguez-Cabello 2005,Rodriguez-Cabello 2005,Rodriguez-Cabello 1998,,Rodriguez-Cabello 2005,Rodriguez-Cabello 2005,
+Mustelus asterias,Starry smooth-hound,Widely,sdv.27.nea,F,0.0010,3.270,124.00,123.500,81.90,,,0.15,Farrell et al 2010,Farrell et al 2010,Farrell et al 2010,Farrell et al 2010,McCully-Phillips 2015,,Farrell et al 2010,Farrell et al 2010,
+Raja clavata,Thornback ray,Celtic Seas,rjc.27.afg,F,0.0024,3.2653,104.00,139.500,71.80,6.13,-1.84,0.09,Silva et al 2013,Silva et al 2013,Gallagher et al 2005,Gallagher et al 2005,Gallagher et al 2005,Gallagher et al 2005,Gallagher et al 2005,Gallagher et al 2005,
+Raja clavata,Thornback ray,North Sea,rjc.27.347d,F,0.0045,3.0686,94.00,118.000,77.10,,-0.88,0.14,Silva et al 2013,Silva et al 2013,Walker 1999,Walker 1999,Walker 1999,,Walker 1999,Walker 1999,
+Sardina pilchardus,Pilchard,Celtic Seas,sardina_pilchardus,C,0.0053,3.162,27.60,22.000,14.30,,,0.60,Silva et al 2013,Silva et al 2013,Silva et al 2008,Silva et al 2008,Silva et al 2013a,,,Silva et al 2008,Data from Cantabrian Sea & N Portugal
+Zeus faber,John Dory,Celtic Seas,zeus_faber,F,0.0399,2.754,,50.800,34.50,,-1.47,0.47,Silva et al 2013,Silva et al 2013,,Dunn 2001,Dunn 2001,,Dunn 2001,Dunn 2001,
+Chelidonichtys lucerna,Tub gurnard,Celtic Seas,chelidonichtys_lucerna,F,0.0043,3.210,,66.800,40.10,,-0.46,0.32,Baron 1985a,Baron 1985a,,Baron 1985a,Baron 1985b,,Baron 1985a,Baron 1985a,"Biscay data, few large old"
+Spondyliosoma cantharus,Black sea-bream,Celtic Seas,spondyliosoma_cantharus,F,0.0148,3.004,,41.250,22.00,,-1.16,0.22,Silva et al 2013,Silva et al 2013,,Perdou & Nedelec 1982,Soletchnik 1982,,Perdou & Nedelec 1982,Perdou & Nedelec 1982,Channel/W Channel data
+Anarchias lupus,Wolffish,North Sea,anarchias_lupus,F,0.0046,3.185,,115.100,21.50,3.80,-0.39,0.11,Silva et al 2013,Silva et al 2013,,Liao and Lucas 2000,Gunnarsson et al 2006,Gunnarsson et al 2006,Liao and Lucas 2000,Liao and Lucas 2000,E Iceland L50
+Scophthalmus rhombus,Brill,North Sea,scophthalmus_rhombus,F,0.0140,3.010,,58.000,31.30,1.60,-0.27,0.38,Silva et al 2013,Silva et al 2013,,Van der Hammen et al 2013,Van der Hammen et al 2013,Van der Hammen et al 2013,Van der Hammen et al 2013,Van der Hammen et al 2013,
+Argentina silus,Greater argentine,Widely,arg-comb-ex5.,C,0.0050,3.075,,44.000,38.00,8.20,,0.23,Silva et al 2013,Silva et al 2013,,Magnussen 2007,Magnussen 2007,Magnussen 2007,,Magnussen 2007,
+Engraulis encrasicolus,Anchovy,Biscay-Iberia,ane-pore,C,0.0050,3.107,23.00,,16.80,,,0.44,Silva et al 2013,Silva et al 2013,Silva et al 2008,,Silva et al 2006,,,Silva et al 2008,"N France, NE Atlantic data"
+Lophius budegassa,Black anglerfish,Celtic Seas,ang-78ab,F,0.0259,2.858,,110.100,54.80,9.00,0.39,0.08,Silva et al 2013,Silva et al 2013,,Landa et al 1998,Duarte et al 1998,Duarte et al 1998,Landa et al 1998,Landa et al 1998,"VIIIc,Ixa data"
+Clupea harengus,Herring,Baltic ,her-31,F,,,,,,,,,,,,,,,,,
+Scopthalmus maximus,Turbot,Celtic Seas,tur-celt,,,,,,,,,,,,,,,,,,
+Scophthalmus rhombus,Brill,Baltic ,bll-2232,,,,,,,,,,,,,,,,,,
+Engraulis encrasicolus,Anchovy,Celtic Seas,,,,,,,,,,,,,,,,,,,
+Engraulis encrasicolus,Anchovy,North Sea,,,,,,,,,,,,,,,,,,,

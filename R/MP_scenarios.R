@@ -6,7 +6,7 @@
 
 
 ### ------------------------------------------------------------------------ ###
-### catch rule 3.2.1: perfect knowledge scenarios
+### catch rule 3.2.1: perfect knowledge scenarios ####
 ### ------------------------------------------------------------------------ ###
 ### no uncertainty except for recruitment uncertainty
 ### no noise for observation, lhist, refpts, implementation...
@@ -76,7 +76,7 @@ ctrl.mps <- lapply(1:30, function(x){
 ctrl.mps <- unlist(ctrl.mps, recursive = FALSE)
 
 ### ------------------------------------------------------------------------ ###
-### catch rule 3.2.2
+### catch rule 3.2.2 ####
 ### ------------------------------------------------------------------------ ###
 
 ### template
@@ -111,7 +111,7 @@ ctrl.mp_3.2.2_list <- lapply(1:30, function(x){
 ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.2_list)
 
 ### ------------------------------------------------------------------------ ###
-### catch rule 3.2.1
+### catch rule 3.2.1 ####
 ### ------------------------------------------------------------------------ ###
 ### perfect knowledge
 ### factor f:
@@ -137,7 +137,7 @@ ctrl.mp_3.2.1_perfect_knowledge <- lapply(ctrl.mp_3.2.1_perfect_knowledge,
 ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.1_perfect_knowledge)
 
 ### ------------------------------------------------------------------------ ###
-### catch rule 3.2.1
+### catch rule 3.2.1 ####
 ### ------------------------------------------------------------------------ ###
 ### perfect knowledge
 ### but MK = 1.5 shortcut
@@ -154,8 +154,7 @@ ctrl.mp_3.2.1_MK <- lapply(ctrl.mp_3.2.1_MK,
 ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.1_MK)
 
 ### ------------------------------------------------------------------------ ###
-### catch rule 3.2.2
-### with annual TAC
+### catch rule 3.2.2 with annual TAC ####
 ### ------------------------------------------------------------------------ ###
 
 ### load template
@@ -171,8 +170,7 @@ ctrl.mp_3.2.2_list_1 <- lapply(ctrl.mp_3.2.2_list_1, function(x){
 ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.2_list_1)
 
 ### ------------------------------------------------------------------------ ###
-### catch rule 3.2.2
-### with observation error
+### catch rule 3.2.2 with observation error ####
 ### ------------------------------------------------------------------------ ###
 
 ### load template
@@ -190,7 +188,7 @@ ctrl.mp_3.2.2_list_2 <- lapply(ctrl.mp_3.2.2_list_2, function(x){
 ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.2_list_2)
 
 ### ------------------------------------------------------------------------ ###
-### catch rule 3.2.1
+### catch rule 3.2.1 perfect knowledge & combinations ####
 ### ------------------------------------------------------------------------ ###
 ### perfect knowledge & combinations
 ### factor f:
@@ -245,7 +243,7 @@ ctrl.mp_3.2.1_combs <- lapply(ctrl.mp_3.2.1_combs, function(x){
 ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.1_combs)
 
 ### ------------------------------------------------------------------------ ###
-### 3.2.2 with lower FproxyMSY
+### 3.2.2 with lower FproxyMSY ####
 ### ------------------------------------------------------------------------ ###
 ### HCR multiplier (multiply adviced catch from HCR)
 ### 0.5 for all stocks and fishing histories
@@ -281,7 +279,7 @@ ctrl.mp_3.2.2_list_4 <- unlist(ctrl.mp_3.2.2_list_4, recursive = FALSE)
 ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.2_list_3, ctrl.mp_3.2.2_list_4)
 
 ### ------------------------------------------------------------------------ ###
-### 3.2.2 with w != 1.4
+### 3.2.2 with w != 1.4 ####
 ### ------------------------------------------------------------------------ ###
 ### for herring and sandeel
 
@@ -306,7 +304,7 @@ ctrl.mp_3.2.2_list_5 <- unlist(ctrl.mp_3.2.2_list_5, recursive = FALSE)
 ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.2_list_5)
 
 ### ------------------------------------------------------------------------ ###
-### 3.1: SPiCT
+### 3.1: SPiCT ####
 ### ------------------------------------------------------------------------ ###
 
 ### template
@@ -340,7 +338,7 @@ ctrl.mp_spict_list <- lapply(1:30, function(x){
 ctrl.mps <- c(ctrl.mps, ctrl.mp_spict_list)
 
 ### ------------------------------------------------------------------------ ###
-###  3.2.1 combinations with error
+###  3.2.1 combinations with error ####
 ### ------------------------------------------------------------------------ ###
 # scn_df[scn_df$catch_rule == "3.2.1" &
 #          scn_df$options %in% c("option_f:a perfect_knowledge:TRUE option_r:a option_b:a",
@@ -369,7 +367,7 @@ ctrl.mps_3.2.1_combs_error <- lapply(ctrl.mps_3.2.1_combs_error, function(x){
 ctrl.mps <- c(ctrl.mps, ctrl.mps_3.2.1_combs_error)
 
 ### ------------------------------------------------------------------------ ###
-###  3.2.1 combinations with error & multiplier for pol-nsea
+### 3.2.1 combinations with error & multiplier for pol-nsea ####
 ### ------------------------------------------------------------------------ ###
 # scn_df[scn_df$catch_rule == "3.2.1" &
 #        scn_df$options %in% c("option_f:a option_r:a option_b:a MK:1.5",
@@ -398,7 +396,7 @@ ctrl.mps_3.2.1_combs_mult <- unlist(ctrl.mps_3.2.1_combs_mult, recursive = FALSE
 ctrl.mps <- c(ctrl.mps, ctrl.mps_3.2.1_combs_mult)
 
 ### ------------------------------------------------------------------------ ###
-###  3.2.1 combinations with error & b_w for pol-nsea
+###  3.2.1 combinations with error & b_w for pol-nsea ####
 ### ------------------------------------------------------------------------ ###
 ### extract templates for pol-nsea
 ctrl.mps_3.2.1_combs_w <- ctrl.mps[c(628, 643, 658, 673)]
@@ -422,7 +420,7 @@ ctrl.mps_3.2.1_combs_w <- unlist(ctrl.mps_3.2.1_combs_w, recursive = FALSE)
 ctrl.mps <- c(ctrl.mps, ctrl.mps_3.2.1_combs_w)
 
 ### ------------------------------------------------------------------------ ###
-###  3.2.1 combs & noise & meeting changes
+###  3.2.1 combs & noise & meeting changes ####
 ### ------------------------------------------------------------------------ ###
 ### z
 # scn_df[scn_df$catch_rule == "3.2.1" & scn_df$uncertainty == "observation_error" &
@@ -462,7 +460,7 @@ ctrl.mps_mult <- unlist(ctrl.mps_mult, recursive = FALSE)
 
 ### upper constraints
 ### template
-ctrl.mps_red
+#ctrl.mps_red
 ctrl.mps_upper <- lapply(ctrl.mps_red, function(ctrl){
   ### go through z list
   res <- lapply(c(1.1, 1.15, 1.2, 1.25, 1.3, 1.4, 1.5, 2, 3), function(upper){
@@ -477,7 +475,7 @@ ctrl.mps_upper <- unlist(ctrl.mps_upper, recursive = FALSE)
 ctrl.mps <- c(ctrl.mps, ctrl.mps_z, ctrl.mps_mult, ctrl.mps_upper)
 
 ### ------------------------------------------------------------------------ ###
-###  3.2.1 combs & noise & meeting changes: upper/lower constraints combinations
+###  3.2.1 combs & noise & meeting changes: upper/lower constraints combs ####
 ### ------------------------------------------------------------------------ ###
 
 ctrl.mps_upper_lower <- lapply(ctrl.mps_red, function(ctrl){
@@ -499,7 +497,7 @@ ctrl.mps <- c(ctrl.mps, ctrl.mps_upper_lower)
 ### 913-1032
 
 ### ------------------------------------------------------------------------ ###
-###  3.2.1 combs & noise & meeting changes: mult & b exponent
+###  3.2.1 combs & noise & meeting changes: mult & b exponent ####
 ### ------------------------------------------------------------------------ ###
 
 ctrl.mps_mult_z <- lapply(ctrl.mps_red, function(ctrl){
@@ -521,14 +519,126 @@ ctrl.mps_mult_z <- unlist(ctrl.mps_mult_z, recursive = FALSE)
 ctrl.mps <- c(ctrl.mps, ctrl.mps_mult_z)
 ### 1033-1152
 
-
+### ------------------------------------------------------------------------ ###
+### more stocks: not used in WKLIFE ####
+### 3.2.1 f:a b:a r:a perfect knowledge ####
+### ------------------------------------------------------------------------ ###
+ctrl_tmp <- ctrl.mps[[391]]
+### add stocks
+ctrl_tmp <- lapply(31:58, function(x){
+  ### load template
+  tmp <- ctrl_tmp
+  ### change stock
+  tmp$ctrl.om$stk_pos <- x
+  return(tmp)
+})
+### add to list
+ctrl.mps <- c(ctrl.mps, ctrl_tmp)
+### 1153-1180
 
 ### ------------------------------------------------------------------------ ###
-### create table with specifications
+### more stocks: not used in WKLIFE ####
+### 3.2.1 f:a b:a r:a & uncertainty ####
+### ------------------------------------------------------------------------ ###
+ctrl_tmp <- ctrl.mps[[627]]
+### add stocks
+ctrl_tmp <- lapply(31:58, function(x){
+  ### load template
+  tmp <- ctrl_tmp
+  ### change stock
+  tmp$ctrl.om$stk_pos <- x
+  return(tmp)
+})
+### add to list
+ctrl.mps <- c(ctrl.mps, ctrl_tmp)
+### 1181-1208
+
+### ------------------------------------------------------------------------ ###
+### more stocks: not used in WKLIFE ####
+### 3.2.2 & uncertainty ####
+### ------------------------------------------------------------------------ ###
+ctrl_tmp <- ctrl.mps[[362]]
+### add stocks
+ctrl_tmp <- lapply(31:58, function(x){
+  ### load template
+  tmp <- ctrl_tmp
+  ### change stock
+  tmp$ctrl.om$stk_pos <- x
+  return(tmp)
+})
+### add to list
+ctrl.mps <- c(ctrl.mps, ctrl_tmp)
+### 1209-1236
+
+### ------------------------------------------------------------------------ ###
+### more stocks: not used in WKLIFE ####
+### 3.2.1 lower/upper limit combined ####
+### ------------------------------------------------------------------------ ###
+### template
+ctrl.mp_tmp <- ctrl.mps[[913]]
+ctrl.mp_tmp$ctrl.h$lower_constraint <- 0
+ctrl.mp_tmp$ctrl.h$upper_constraint <- Inf
+
+### go lower limit
+ctrl.mps_add <- lapply(c(0, .5, .6, .7, .75, .8, .85, .9),
+  function(lower){
+   
+   ### go through upper limits
+   res1 <- lapply(c(1.1, 1.15, 1.2, 1.25, 1.3, 1.5, Inf), function(upper){
+     ### go through stocks
+     res2 <- lapply(1:58, function(stock_id){
+       ctrl.mp_tmp$ctrl.om$stk_pos <- stock_id
+       ctrl.mp_tmp$ctrl.h$lower_constraint <- lower
+       ctrl.mp_tmp$ctrl.h$upper_constraint <- upper
+       return(ctrl.mp_tmp)
+     })
+     return(res2)
+   })
+   return(unlist(res1, recursive = FALSE))
+  })
+ctrl.mps_add <- unlist(ctrl.mps_add, recursive = FALSE)
+### add
+ctrl.mps <- c(ctrl.mps, ctrl.mps_add)
+### 1237-4484
+
+### ------------------------------------------------------------------------ ###
+### more stocks: not used in WKLIFE ####
+### 3.2.1 exponent b & multiplier combs for all stocks ####
+### ------------------------------------------------------------------------ ###
+### template
+ctrl.mp_tmp <- ctrl.mps[[c(1033)]]
+ctrl.mp_tmp$ctrl.f$b_z <- 1
+ctrl.mp_tmp$ctrl.x$multiplier <- 1
+
+### go through multipliers
+ctrl.mps_add <- lapply(c(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1),
+                       function(multiplier){
+
+  ### go through exponents
+  res1 <- lapply(c(1, 1.5, 2, 3, 5), function(b_z){
+    ### go through stocks
+    res2 <- lapply(1:58, function(stock_id){
+      ctrl.mp_tmp$ctrl.om$stk_pos <- stock_id
+      ctrl.mp_tmp$ctrl.f$b_z <- b_z
+      ctrl.mp_tmp$ctrl.x$multiplier <- multiplier
+      return(ctrl.mp_tmp)
+    })
+    return(res2)
+  })
+  return(unlist(res1, recursive = FALSE))
+})
+ctrl.mps_add <- unlist(ctrl.mps_add, recursive = FALSE)
+
+ctrl.mps <- c(ctrl.mps, ctrl.mps_add)
+### 4485-6804
+
+### ------------------------------------------------------------------------ ###
+### create table with specifications ####
 ### ------------------------------------------------------------------------ ###
 
 ### load wklife stock data
-wklife <- read.csv("input/wklife.csv")
+#wklife <- read.csv("input/wklife.csv")
+wklife <- read.csv("input/stock_list_full2.csv")
 
 scn_df <- data.frame(scenario = seq_along(ctrl.mps))
 
@@ -537,7 +647,13 @@ scn_df$stk_pos <- unlist(lapply(ctrl.mps, function(x){
   x$ctrl.om$stk_pos
 }))
 ### position in list of 15 stocks
-scn_df$stk_pos2 <- ifelse(scn_df$stk_pos <= 15, scn_df$stk_pos, scn_df$stk_pos - 15)
+scn_df$stk_pos2 <- unlist(lapply(scn_df$stk_pos, function(x){
+  if(x <= 15) return(x)
+  if(x <=30) return(x - 15)
+  if(x <= 44) return(x - 30 + 15)
+  if(x <= 58) return(x - 44 + 15)
+}))
+#scn_df$stk_pos2 <- ifelse(scn_df$stk_pos <= 15, scn_df$stk_pos, scn_df$stk_pos - 15)
 
 ### set stock name
 scn_df <- merge(x = scn_df, y = wklife[, c("X", "stock")], 
@@ -547,7 +663,8 @@ scn_df <- scn_df[order(scn_df$scenario), ]
 scn_df <- scn_df[, c("scenario", "stk_pos", "stk_pos2", "stock")]
 
 ### fishing history
-scn_df$fhist <- ifelse(scn_df$stk_pos <= 15, "one-way", "roller-coaster")
+scn_df$fhist <- ifelse(scn_df$stk_pos %in% c(1:15, 31:44), 
+                       "one-way", "roller-coaster")
 
 ### catch rule
 scn_df$catch_rule <- unlist(lapply(ctrl.mps, function(x){
@@ -613,10 +730,8 @@ scn_df$lower_constraint <- unlist(lapply(ctrl.mps, function(x){
 ### get rid of row names
 row.names(scn_df) <- NULL
 
-rm(ctrl.mp_3.2.1, ctrl.mp_3.2.1_combs_fa, 
-   ctrl.mp_3.2.1_combs_fa_ra, ctrl.mp_3.2.1_combs_fa_rb, ctrl.mp_3.2.1_combs_fb,
-   ctrl.mp_3.2.1_combs_fb_ra, ctrl.mp_3.2.1_combs_fb_rb, ctrl.mp_3.2.1_MK,
-   ctrl.mp_3.2.1_perfect_knowledge, ctrl.mp_3.2.2, ctrl.mp_3.2.2_list,
-   ctrl.mp_3.2.1_combs,
-   ctrl.mps_upper_lower, ctrl.mps_mult_z, ctrl.mps_red)
+### remove the ctrl.mp... objects from environment
+rm(list = (ls()[grepl(ls(), pattern = "ctrl.mp_") | 
+                grepl(ls(), pattern = "ctrl.mps_")]))
+
 

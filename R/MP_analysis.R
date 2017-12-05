@@ -624,7 +624,8 @@ plot_factor <- function(scenarios, names, res_path = NULL, save = FALSE,
 #   x[[1]]
 # }))
 # saveRDS(refpts_lst, file = "output/refpts.rds")
-refpts_lst <- readRDS("output/refpts.rds")
+#refpts_lst <- readRDS("output/refpts.rds")
+refpts_lst <- readRDS("input/refpts.rds")
 
 ### ------------------------------------------------------------------------ ###
 ### 3.2.1 perfect knowledge r ####
@@ -2433,6 +2434,124 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_mult_z_combs2_rel.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 
+### ------------------------------------------------------------------------ ###
+### plot default ra fa ba & noise ssb and catch
+### ------------------------------------------------------------------------ ###
+res_plot <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" & 
+                     res_df$fhist == "one-way" &
+                     is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ]
+
+### load stocks
+res_stks <- lapply(res_plot$scenario, function(x){
+  stk <- readRDS(paste0("output/perfect_knowledge/combined/", x, ".rds"))
+})
+res_stks <- lapply(seq_along(res_stks), function(x){
+  res <- FLQuants(SSB = apply(ssb(res_stks[[x]]), 1:2, median),
+                  catch = apply(catch(res_stks[[x]]), 1:2, median))
+  res <- as.data.frame(res)
+  res$year <- res$year - 100
+  res$stock <- ac(res_plot$stock[x])
+  return(res)
+})
+res_stks <- do.call(rbind, res_stks)
+res_stks$qname <- as.factor(res_stks$qname)
+levels(res_stks$qname) <- c("stock size", "catch")
+### plot
+p <- ggplot(data = res_stks[res_stks$year >= -1, ],
+            aes(x = year, y = data, colour = stock)) +
+  geom_line(show.legend = FALSE) +
+  facet_wrap(~ qname, scales = "free", nrow = 1) +
+  ylab("") + 
+  theme_bw()
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/default.png"), 
+       plot = p,
+       width = 10, height = 4, units = "cm", dpi = 300, type = "cairo-png")
+
+### ------------------------------------------------------------------------ ###
+### more stocks: plot list of stocks
+### not used for WKLIFE
+### ------------------------------------------------------------------------ ###
+### 3.2.1 f:a r:a b:a perfect knowledge
+plot_lst(res_df[1153:1166, ],
+         name = "more/3.2.1_perfect_one-way")
+plot_lst(res_df[1167:1180, ],
+         name = "more/3.2.1_perfect_roller_coaster")
+### 3.2.1 f:a r:a b:a observation error & assumptions
+plot_lst(res_df[1181:1194, ],
+         name = "more/3.2.1_error_one-way")
+plot_lst(res_df[1195:1208, ],
+         name = "more/3.2.1_error_roller_coaster")
+### 3.2.2 observation error
+plot_lst(res_df[1209:1222, ],
+         name = "more/3.2.2_error_one-way")
+plot_lst(res_df[1223:1236, ],
+         name = "more/3.2.2_error_roller_coaster")
+
+### risk plots: 3.2.1 obs error all stocks ####
+### ------------------------------------------------------------------------ ###
+### risk plots for default parametrization
+df_plot <- res_df[res_df$catch_rule == "3.2.1" &
+                    res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
+                    is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ]
+
+### reshape
+df_plot <- melt(data = df_plot, 
+                id.vars = c("scenario", "stock", "fhist", "options", "stk_pos"),
+                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                                 "rel_yield"))
+levels(df_plot$variable) <- c("p(SSB<Blim)", 
+                              ("iter collapse"), "rel. yield")
+### set stock group
+df_plot$group[df_plot$stk_pos <= 30] <- "wklife"
+df_plot$group[is.na(df_plot$group)] <- "new"
+
+### plot
+p <- ggplot(data = df_plot, 
+            aes(x = stock, y = value,  fill = stock)) +
+  geom_bar(stat = "identity", position = "dodge", show.legend = FALSE) +
+  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) + 
+  facet_grid(variable + fhist ~ group, scale = "free_x") +
+  theme_bw() +
+  ylim(0, NA) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/more/",
+                         "risks_3.2.1_error.png"), plot = p,
+       width = 20, height = 22, units = "cm", dpi = 300, type = "cairo-png")
+
+### risk plots: 3.2.2 obs error all stocks ####
+### ------------------------------------------------------------------------ ###
+### 
+df_plot <- subset(res_df, catch_rule == "3.2.2" & 
+                    uncertainty == "observation_error" &
+                    is.na(HCRmult) & is.na(w))
+
+### reshape
+df_plot <- melt(data = df_plot, 
+                id.vars = c("scenario", "stock", "fhist", "options", "stk_pos"),
+                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                                 "rel_yield"))
+levels(df_plot$variable) <- c("p(SSB<Blim)", 
+                              ("iter collapse"), "rel. yield")
+### set stock group
+df_plot$group[df_plot$stk_pos <= 30] <- "wklife"
+df_plot$group[is.na(df_plot$group)] <- "new"
+
+### plot
+p <- ggplot(data = df_plot, 
+            aes(x = stock, y = value,  fill = stock)) +
+  geom_bar(stat = "identity", position = "dodge", show.legend = FALSE) +
+  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) + 
+  facet_grid(variable + fhist ~ group, scale = "free_x") +
+  theme_bw() +
+  ylim(0, NA) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/more/",
+                         "risks_3.2.2_error.png"), plot = p,
+       width = 20, height = 22, units = "cm", dpi = 300, type = "cairo-png")
+
 
 ### ------------------------------------------------------------------------ ###
 ### older attempts
@@ -2483,3 +2602,125 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 ### ------------------------------------------------------------------------ ###
 ### older attempts
 ### ------------------------------------------------------------------------ ###
+
+
+
+
+### ------------------------------------------------------------------------ ###
+### 3.2.1 all stocks - constraints ####
+### ------------------------------------------------------------------------ ###
+
+### load scenario results
+df_plot <- res_df[res_df$scenario %in% 1237:2164, ]
+
+### reshape
+df_plot2 <- melt(data = df_plot, 
+                 id.vars = c("scenario", "stock", "lower_constraint", 
+                             "upper_constraint", "fhist"),
+                 measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                                  "rel_yield"))
+levels(df_plot2$variable) <- c("p(SSB < Blim)", "iteration collapse", "relative yield")
+
+p <- ggplot(data = df_plot2[df_plot2$stock == unique(df_plot2$stock)[1],], 
+            aes(x = lower_constraint, y = upper_constraint)) +
+  scale_fill_gradient("value", limits = c(0,1),
+                      low = "green", high = "red") +
+  labs(x = "lower limit", y = "upper limit") +
+  facet_grid(fhist+variable ~ stock) +
+  geom_raster(aes(fill = value)) +
+  geom_text(aes(label = round(value, 2))) +
+  theme_bw()
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
+                         "risks_limits_combs_grid.png"), plot = p,
+       width = 25, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+### line plots
+p <- ggplot(data = df_plot2[df_plot2$stock == unique(df_plot2$stock)[1],], 
+            aes(x = lower_constraint, y = value, linetype = fhist, 
+                colour = as.factor(upper_constraint),
+                shape = fhist)) +
+  geom_line() + geom_point() + 
+  labs(x = "lower limit") +
+  facet_grid(variable ~ stock, scales = "free") +
+  theme_bw() +
+  scale_color_discrete("upper limit") +
+  scale_shape_discrete("fishing\nhistory") + 
+  scale_linetype_discrete("fishing\nhistory") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
+                         "risks_limits_combs.png"), plot = p,
+       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+### one-way only
+p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ], 
+            aes(x = lower_constraint, y = value, 
+                colour = as.factor(upper_constraint))) +
+  geom_line() + geom_point() + 
+  labs(x = "lower limit") +
+  facet_grid(variable ~ stock, scales = "free") +
+  theme_bw() +
+  scale_color_discrete("upper limit\none-way") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
+                         "risks_limits_combs_one-way.png"), plot = p,
+       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+### roller-coaster only
+p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ], 
+            aes(x = lower_constraint, y = value, 
+                colour = as.factor(upper_constraint))) +
+  geom_line() + geom_point() + 
+  labs(x = "lower limit") +
+  facet_grid(variable ~ stock, scales = "free") +
+  theme_bw() +
+  scale_color_discrete("upper limit\nroller-coaster") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
+                         "risks_limits_combs_roller-coaster.png"), plot = p,
+       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+### same, but inverted
+p <- ggplot(data = df_plot2, 
+            aes(x = upper_constraint, y = value, linetype = fhist, 
+                colour = as.factor(lower_constraint),
+                shape = fhist)) +
+  geom_line() + geom_point() + 
+  labs(x = "upper limit") +
+  facet_grid(variable ~ stock, scales = "free") +
+  theme_bw() +
+  scale_color_discrete("lower limit") +
+  scale_shape_discrete("fishing\nhistory") + 
+  scale_linetype_discrete("fishing\nhistory") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
+                         "risks_limits_combs2.png"), plot = p,
+       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+### one-way only
+p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ], 
+            aes(x = upper_constraint, y = value,
+                colour = as.factor(lower_constraint))) +
+  geom_line() + geom_point() + 
+  labs(x = "upper limit") +
+  facet_grid(variable ~ stock, scales = "free") +
+  theme_bw() +
+  scale_color_discrete("lower limit\none-way") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
+                         "risks_limits_combs2_one_way.png"), plot = p,
+       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+### roller-coaster only
+p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ], 
+            aes(x = upper_constraint, y = value,
+                colour = as.factor(lower_constraint))) +
+  geom_line() + geom_point() + 
+  labs(x = "upper limit") +
+  facet_grid(variable ~ stock, scales = "free") +
+  theme_bw() +
+  scale_color_discrete("lower limit\nroller-coaster") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
+                         "risks_limits_combs2_roller-coaster.png"), plot = p,
+       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
