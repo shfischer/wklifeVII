@@ -633,6 +633,23 @@ ctrl.mps <- c(ctrl.mps, ctrl.mps_add)
 ### 4485-6804
 
 ### ------------------------------------------------------------------------ ###
+### SPiCT all stocks ####
+### ------------------------------------------------------------------------ ###
+
+### add all 30 stocks
+ctrl.mp_spict_list <- lapply(1:58, function(x){
+  ### template
+  tmp <- ctrl.mp_spict
+  ### add stock
+  tmp$ctrl.om$stk_pos <- x
+  return(tmp)
+  
+})
+
+ctrl.mps <- c(ctrl.mps, ctrl.mp_spict_list)
+### 6805-6862
+
+### ------------------------------------------------------------------------ ###
 ### create table with specifications ####
 ### ------------------------------------------------------------------------ ###
 
@@ -732,6 +749,7 @@ row.names(scn_df) <- NULL
 
 ### remove the ctrl.mp... objects from environment
 rm(list = (ls()[grepl(ls(), pattern = "ctrl.mp_") | 
-                grepl(ls(), pattern = "ctrl.mps_")]))
+                grepl(ls(), pattern = "ctrl.mps_")]),
+   f_a, fs, ctrl_tmp, mults, pos_f_a, pos_f_b, ws, add_f_options)
 
 
