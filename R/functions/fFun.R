@@ -635,6 +635,7 @@ wklife_3.1_f <- function(stk, tracking, idx, interval, start_year, ...){
     ### ---------------------------------------------------------------------- ###
     res <- lapply(1:dim(stk)[6], function(iter_i){
       
+      
       ### create input object for spict
       input <- list(obsC  = c(FLCore::iter(catch(stk), iter_i)),
                     timeC = data_years,
@@ -660,61 +661,70 @@ wklife_3.1_f <- function(stk, tracking, idx, interval, start_year, ...){
       fitted <- NULL ### default state of fitted if spict does not work
       . <- capture.output(try(fitted <- fit.spict(input)))
       
-      ### -------------------------------------------------------------------- ###
-      ### continue if model results exist ####
-      ### -------------------------------------------------------------------- ###
+      ### define default return if model failed
+      return_vals <- c(converged = 1, b = NA, f = NA, bmsy = NA, fmsy = NA,
+                       advice = NA)
       
-      if (!is.null(fitted)) {
-        
-        ### ---------------------------------------------------------------- ###
-        ### do SPiCT forecast
-        ### ---------------------------------------------------------------- ###
-        
-        ### select forecast year pointers
-        maninds <- which(fitted$inp$time >= fitted$inp$manstart)
-        
-        ### create new input object
-        input_temp <- fitted$inp[c("dteuler", "timeC", "obsC", "timeI", "obsI", 
-                                   "timepredc", "timepredi", "manstart",
-                                   "getReportCovariance")]
-        
-        ### get Fmsy
-        Fmsy <- get.par('logFmsy', fitted, exp = TRUE)[, "est"]
-        ### get last F value
-        Flast <- get.par('logF', fitted, exp = TRUE)[(fitted$inp$indpred[1]-1), "est"]
-        ### get last estimated biomass
-        Blast <- get.par('logB', fitted, exp = TRUE)[(fitted$inp$indpred[1]-1), "est"]
-        ### get Bmsy
-        Bmsy <- get.par('logBmsy', fitted, exp = TRUE)[, "est"]
-        ### MSYBtrigger = 1/2 Bmsy
-        MSYBtrigger <- Bmsy/2
-        
-        ### calculate target F
-        ### Fmsy as factor of current F, 
-        ### corrected by B/MSYBtrigger (max 1)
-        f_target <- (Fmsy / Flast) * min(1, Blast/MSYBtrigger)
-        
-        ### forecast
-        fitted <- prop.F(fac = f_target, inpin = input_temp, repin = fitted, 
-                         maninds = maninds, dbg = 0)
-        
-        ### ---------------------------------------------------------------- ###
-        ### return results
-        ### ---------------------------------------------------------------- ### 
-        
-        return(c(converged = fitted$opt$convergence,
-                    b = sumspict.states(fitted)[1, "estimate"],
-                    f = sumspict.states(fitted)[2, "estimate"],
-                    bmsy = sumspict.srefpoints(fitted)[1, "estimate"],
-                    fmsy = sumspict.srefpoints(fitted)[2, "estimate"],
-                    advice = sumspict.predictions(fitted)[5, "prediction"] ))
-        
-      } else { ### spict did not work
-        
-        return(c(converged = 1, b = NA, f = NA, bmsy = NA, fmsy = NA,
-                    advice = NA))
-        
-      } 
+      ### stop if model failed entirely
+      if (is.null(fitted)) return(return_vals)
+      
+      ### ---------------------------------------------------------------- ###
+      ### continue: perform SPiCT forecast
+      ### ---------------------------------------------------------------- ###
+      
+      ### select forecast year pointers
+      maninds <- which(fitted$inp$time >= fitted$inp$manstart)
+      
+      ### create new input object
+      input_temp <- fitted$inp[c("dteuler", "timeC", "obsC", "timeI", "obsI", 
+                                 "timepredc", "timepredi", "manstart",
+                                 "getReportCovariance")]
+      
+      ### get Fmsy
+      Fmsy <- get.par('logFmsy', fitted, exp = TRUE)[, "est"]
+      ### get last F value
+      Flast <- get.par('logF', fitted, exp = TRUE)[(fitted$inp$indpred[1]-1), "est"]
+      ### get last estimated biomass
+      Blast <- get.par('logB', fitted, exp = TRUE)[(fitted$inp$indpred[1]-1), "est"]
+      ### get Bmsy
+      Bmsy <- get.par('logBmsy', fitted, exp = TRUE)[, "est"]
+      ### MSYBtrigger = 1/2 Bmsy
+      MSYBtrigger <- Bmsy/2
+      
+      ### calculate target F
+      ### Fmsy as factor of current F, 
+      ### corrected by B/MSYBtrigger (max 1)
+      f_target <- (Fmsy / Flast) * min(1, Blast/MSYBtrigger)
+      
+      ### stop forecast if target does not exist
+      ### convergence value 2: missing target
+      if (isTRUE(is.na(f_target)) | is.null(f_target) | length(f_target) == 0) {
+        return_vals[[1]] <- 2
+        return(return_vals)
+      }
+      
+      ### forecast
+      fitted_fwd <- NULL
+      try(fitted_fwd <- (prop.F(fac = f_target, inpin = input_temp, repin = fitted, 
+                       maninds = maninds, dbg = 0)))
+      
+      ### stop if forecast failed
+      ### convergence value 3: forecast failed
+      if (is.null(fitted_fwd)) {
+        return_vals[[1]] <- 3
+        return(return_vals)
+      }
+      
+      ### ---------------------------------------------------------------- ###
+      ### return results
+      ### ---------------------------------------------------------------- ### 
+      
+      return(c(converged = fitted$opt$convergence,
+               b = sumspict.states(fitted)[1, "estimate"],
+               f = sumspict.states(fitted)[2, "estimate"],
+               bmsy = sumspict.srefpoints(fitted)[1, "estimate"],
+               fmsy = sumspict.srefpoints(fitted)[2, "estimate"],
+               advice = sumspict.predictions(fitted_fwd)[5, "prediction"] ))
       
     })
     
