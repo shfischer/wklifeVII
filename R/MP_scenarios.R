@@ -752,4 +752,4 @@ rm(list = (ls()[grepl(ls(), pattern = "ctrl.mp_") |
                 grepl(ls(), pattern = "ctrl.mps_")]),
    f_a, fs, ctrl_tmp, mults, pos_f_a, pos_f_b, ws, add_f_options)
 
-
+write.csv(scn_df, file = "MP_scenarios.csv")
