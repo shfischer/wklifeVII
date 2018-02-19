@@ -155,6 +155,8 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
                     iter = 1:it))
   ### start tracking
   tracking["Implementation", ac(iy)] <- catch(stk)[,ac(iy)]
+  ### initialize advised catch
+  tracking["advice", ac(98)] <- catch(stk)[,ac(99)]
   
   ### ---------------------------------------------------------------------- ###
   ### loop through simulation years ####
@@ -170,7 +172,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     tracking["OM.f", ac(ay-1)] <- fbar(stk)[,ac(ay-1)]
     tracking["OM.ssb", ac(ay-1)] <- ssb(stk)[,ac(ay-1)]
     tracking["OM.catch", ac(ay-1)] <- catch(stk)[,ac(ay-1)]
-    tracking["advice", ac(ay-2)] <- catch(stk)[,ac(ay-1)]
+    #tracking["advice", ac(ay-2)] <- catch(stk)[,ac(ay-1)]
     
     ### -------------------------------------------------------------------- ###
     ### OEM ####
