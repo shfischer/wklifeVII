@@ -85,51 +85,51 @@ ibind <- function(object){
   
 }
 
-### load parts and combine them 
+### load parts and combine them
 scenarios <- df2$scenario#df2$scenario[df2$count == 10]
 ### only 3.2.2 scenarios
 #scenarios <- 181:210
 
 
-res <- foreach(scenario = scenarios, 
-        .packages = c("FLCore"), 
-        .export = ls()) %dopar% {
-  
-  ### get parts
-  parts_i <- nrow(df[df$scenario == scenario, ])
-  stk_list <- lapply(1:parts_i,
-    function(part){
-      readRDS(paste0(path_res, df$file_name[df$scenario == scenario &
-                                            df$part == part]))
-    })
-  
-  ### fill stock
-  stk_temp <- ibind(stk_list)
-  
-  ### do the same for the attributes
-  attr(stk_temp, "lhpar") <- ibind(lapply(stk_list, function(x){
-    attr(x, "lhpar")
-  }))
-  attr(stk_temp, "refpts") <- ibind(lapply(stk_list, function(x){
-    attr(x, "refpts")
-  }))
-  attr(stk_temp, "tracking") <- ibind(lapply(stk_list, function(x){
-    attr(x, "tracking")
-  }))
-  attr(stk_temp, "catch_len") <- ibind(lapply(stk_list, function(x){
-    attr(x, "catch_len")
-  }))
-  
-  ### set name
-  name(stk_temp) <- as.character(scenario)
-  
-  ### save
-  saveRDS(stk_temp, file = paste0(path_res, "combined/", scenario, ".rds"))
-  
-  ### return stk
-  return(stk_temp)
-
-}
+res <- foreach(scenario = scenarios,
+               .packages = c("FLCore"),
+               .export = ls()) %dopar% {
+                 
+                 ### get parts
+                 parts_i <- nrow(df[df$scenario == scenario, ])
+                 stk_list <- lapply(1:parts_i,
+                                    function(part){
+                                      readRDS(paste0(path_res, df$file_name[df$scenario == scenario &
+                                                                              df$part == part]))
+                                    })
+                 
+                 ### fill stock
+                 stk_temp <- ibind(stk_list)
+                 
+                 ### do the same for the attributes
+                 attr(stk_temp, "lhpar") <- ibind(lapply(stk_list, function(x){
+                   attr(x, "lhpar")
+                 }))
+                 attr(stk_temp, "refpts") <- ibind(lapply(stk_list, function(x){
+                   attr(x, "refpts")
+                 }))
+                 attr(stk_temp, "tracking") <- ibind(lapply(stk_list, function(x){
+                   attr(x, "tracking")
+                 }))
+                 attr(stk_temp, "catch_len") <- ibind(lapply(stk_list, function(x){
+                   attr(x, "catch_len")
+                 }))
+                 
+                 ### set name
+                 name(stk_temp) <- as.character(scenario)
+                 
+                 ### save
+                 saveRDS(stk_temp, file = paste0(path_res, "combined/", scenario, ".rds"))
+                 
+                 ### return stk
+                 return(stk_temp)
+                 
+               }
 
 ### set names to scenario number
 names(res) <- scenarios
@@ -162,7 +162,7 @@ names(res) <- scenarios
 ### add results for 3.2.1 f:c, only first part available
 ### ------------------------------------------------------------------------ ###
 # scenarios <- seq(5, 180, by = 6)
-# 
+#
 # ### load files
 # res_add <- foreach(scenario = scenarios, .packages = "FLCore") %dopar% {
 #   stk_tmp <- readRDS(paste0("output/perfect_knowledge/", scenario, "_1.rds"))
@@ -170,7 +170,7 @@ names(res) <- scenarios
 #   stk_tmp
 # }
 # names(res_add) <- scenarios
-# 
+#
 # ### add
 # res <- c(res, res_add)
 
@@ -180,15 +180,31 @@ names(res) <- scenarios
 ### ------------------------------------------------------------------------ ###
 
 #scenarios <- c(181:210, 331:390)
-. <- lapply(scenarios, function(x){
-  stk_tmp <- readRDS(paste0("output/perfect_knowledge/combined/", x, ".rds"))
-  p <- plot(stk_tmp)
-  ggsave(filename = paste0("output/perfect_knowledge/plots/", x,
+# . <- lapply(scenarios, function(x){
+#   stk_tmp <- readRDS(paste0("output/perfect_knowledge/combined/", x, ".rds"))
+#   p <- plot(stk_tmp)
+#   ggsave(filename = paste0("output/perfect_knowledge/plots/", x,
+#                            ".png"),
+#          width = 15, height = 15, units = "cm", dpi = 100, type = "cairo-png",
+#          plot = p)
+# })
+
+### plot all scenarios from external HDD
+files <- list.files("D:/WKLIFEVII/github/wklifeVII/R/output/perfect_knowledge/combined/")
+scenarios <- sort(unlist(lapply(files, function(x){
+  as.numeric(unlist(strsplit(x, split = "\\."))[1])
+})))
+
+### loop through all scenarios and plot
+. <- foreach(scenario = scenarios, .packages = "ggplotFL") %dopar% {
+  stk_tmp <- readRDS(paste0("D:/WKLIFEVII/github/wklifeVII/R/output/",
+                            "perfect_knowledge/combined/", scenario, ".rds"))
+  p <- plot(stk_tmp, probs = c(0.05, 0.25, 0.5, 0.75, 0.95))
+  ggsave(filename = paste0("output/perfect_knowledge/plots/all/", scenario,
                            ".png"),
          width = 15, height = 15, units = "cm", dpi = 100, type = "cairo-png",
          plot = p)
-})
-
+}
 
 ### ------------------------------------------------------------------------ ###
 ### calculate Blim ####
@@ -213,9 +229,9 @@ Blim <- lapply(1:30, function(x){
     ### recruitment with Beverton & Holt
     rec <- BevHolt(a = c(params(sr.om)["a"]), b = c(params(sr.om)["b"]),
                    ssb = ssbs)
-
+    
     ssbs[tail(which(rec <= c(max(rec) * 0.7)), 1)]
-      
+    
   })()
 })
 
@@ -234,7 +250,7 @@ B_lim <- 162.79
 #   })
 # })
 stats <- foreach(scenario = scenarios, .packages = "FLCore", .export = "B_lim") %dopar% {
-#stats <- foreach(stk_tmp = res, .packages = "FLCore", .export = "B_lim") %dopar% {
+  #stats <- foreach(stk_tmp = res, .packages = "FLCore", .export = "B_lim") %dopar% {
   #lapply(seq_along(res), function(i){
   ### load stk
   stk_tmp <- readRDS(paste0("output/perfect_knowledge/combined/", scenario, ".rds"))
@@ -242,24 +258,24 @@ stats <- foreach(scenario = scenarios, .packages = "FLCore", .export = "B_lim") 
   n_iter <- dim(stk_tmp)[6]
   
   ### proportion where SSB was below B_lim
-  res_temp$ssb_below_blim_total <- 
+  res_temp$ssb_below_blim_total <-
     sum(ssb(stk_tmp)[, ac(101:200)] < B_lim) / (n_iter*100)
   ### proportion of iterations where SSB dropped below B_lim
-  res_temp$ssb_below_blim_iter <- 
+  res_temp$ssb_below_blim_iter <-
     sum(yearSums(ssb(stk_tmp)[, ac(101:200)] < B_lim) > 0) / n_iter
   
   ### stock collapse = ssb < 1
-  res_temp$collapse_total <- 
+  res_temp$collapse_total <-
     sum(ssb(stk_tmp)[, ac(100:200)] < 1) / (n_iter*100)
   ### proportion of iterations with collapse
-  res_temp$collapse_iter <- 
+  res_temp$collapse_iter <-
     sum(yearSums(ssb(stk_tmp)[, ac(101:200)] < 1) > 0) / n_iter
   
   ### how frequently is max F reached?
   res_temp$fmaxed_total <- sum(fbar(stk_tmp)[, ac(101:200)] == 5) / (n_iter*100)
   ### in how many iterations did this happen?
   res_temp$fmaxed_iter <- sum(yearSums(fbar(stk_tmp)[, ac(101:200)] == 5) > 0)/
-                          n_iter
+    n_iter
   
   ### yield
   res_temp$yield <- mean(catch(stk_tmp[,ac(101:200)]))
@@ -383,17 +399,17 @@ plot_lst(res_df[res_df$options == "option_f:a MK:1.5" & res_df$fhist == "roller-
 
 ### 3.2.2. perfect knowledge
 plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "one-way" &
-                res_df$TAC == 2 & res_df$uncertainty == "perfect_knowledge", ],
+                  res_df$TAC == 2 & res_df$uncertainty == "perfect_knowledge", ],
          name = "3.2.2/perfect_knowledge_one-way")
 plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "roller-coaster" &
                   res_df$TAC == 2 & res_df$uncertainty == "perfect_knowledge", ],
          name = "3.2.2/perfect_knowledge_roller-coaster")
 ### 3.2.2 perfect knowledge annual TAC
 plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "one-way" &
-                res_df$TAC == 1 & res_df$uncertainty == "perfect_knowledge", ],
+                  res_df$TAC == 1 & res_df$uncertainty == "perfect_knowledge", ],
          name = "3.2.2/perfect_knowledge_annual_one-way")
 plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "roller-coaster" &
-                res_df$TAC == 1 & res_df$uncertainty == "perfect_knowledge", ],
+                  res_df$TAC == 1 & res_df$uncertainty == "perfect_knowledge", ],
          name = "3.2.2/perfect_knowledge_annual_roller-coaster")
 ### 3.2.2 with observation error
 plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "one-way" &
@@ -406,8 +422,8 @@ plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "roller-coaster" 
          name = "3.2.2/observation_error_roller-coaster")
 ### 3.2.2 with observation error and HCR multiplier
 plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "one-way" &
-                res_df$TAC == 2 & res_df$uncertainty == "observation_error" &
-                res_df$HCRmult == 0.5 & !is.na(res_df$HCRmult), ],
+                  res_df$TAC == 2 & res_df$uncertainty == "observation_error" &
+                  res_df$HCRmult == 0.5 & !is.na(res_df$HCRmult), ],
          name = "3.2.2/observation_error_HCRmult0.5_one-way")
 plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "roller-coaster" &
                   res_df$TAC == 2 & res_df$uncertainty == "observation_error" &
@@ -415,46 +431,46 @@ plot_lst(res_df[res_df$catch_rule == "3.2.2" & res_df$fhist == "roller-coaster" 
          name = "3.2.2/observation_error_HCRmult0.5_roller-coaster")
 
 ### 3.2.1. combinations
-plot_lst(res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:a option_b:a" & 
+plot_lst(res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:a option_b:a" &
                   res_df$fhist == "one-way", ],
          name = "3.2.1/perfect_comb_f.a_r.a_one-way")
-plot_lst(res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:b option_b:a" & 
+plot_lst(res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:b option_b:a" &
                   res_df$fhist == "one-way", ],
          name = "3.2.1/perfect_comb_f.a_r.b_one-way")
-plot_lst(res_df[res_df$options == "option_f:b perfect_knowledge:TRUE option_r:a option_b:a" & 
+plot_lst(res_df[res_df$options == "option_f:b perfect_knowledge:TRUE option_r:a option_b:a" &
                   res_df$fhist == "one-way", ],
          name = "3.2.1/perfect_comb_f.b_r.a_one-way")
-plot_lst(res_df[res_df$options == "option_f:b perfect_knowledge:TRUE option_r:b option_b:a" & 
+plot_lst(res_df[res_df$options == "option_f:b perfect_knowledge:TRUE option_r:b option_b:a" &
                   res_df$fhist == "one-way", ],
          name = "3.2.1/perfect_comb_f.b_r.b_one-way")
-plot_lst(res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:a option_b:a" & 
+plot_lst(res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:a option_b:a" &
                   res_df$fhist == "roller-coaster", ],
          name = "3.2.1/perfect_comb_f.a_r.a_roller-coaster")
-plot_lst(res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:b option_b:a" & 
+plot_lst(res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:b option_b:a" &
                   res_df$fhist == "roller-coaster", ],
          name = "3.2.1/perfect_comb_f.a_r.b_roller-coaster")
-plot_lst(res_df[res_df$options == "option_f:b perfect_knowledge:TRUE option_r:a option_b:a" & 
+plot_lst(res_df[res_df$options == "option_f:b perfect_knowledge:TRUE option_r:a option_b:a" &
                   res_df$fhist == "roller-coaster", ],
          name = "3.2.1/perfect_comb_f.b_r.a_roller-coaster")
-plot_lst(res_df[res_df$options == "option_f:b perfect_knowledge:TRUE option_r:b option_b:a" & 
+plot_lst(res_df[res_df$options == "option_f:b perfect_knowledge:TRUE option_r:b option_b:a" &
                   res_df$fhist == "roller-coaster", ],
          name = "3.2.1/perfect_comb_f.b_r.b_roller-coaster")
 
 ### 3.2.1. combinations & noise
-plot_lst(res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" & 
-                  res_df$fhist == "one-way" & 
+plot_lst(res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
+                  res_df$fhist == "one-way" &
                   is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ],
          name = "3.2.1/noise_comb_f.a_r.a_one-way")
-plot_lst(res_df[res_df$options == "option_f:a option_r:b option_b:a MK:1.5" & 
-                  res_df$fhist == "one-way" & 
+plot_lst(res_df[res_df$options == "option_f:a option_r:b option_b:a MK:1.5" &
+                  res_df$fhist == "one-way" &
                   is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ],
          name = "3.2.1/noise_comb_f.a_r.b_one-way")
-plot_lst(res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" & 
-                  res_df$fhist == "roller-coaster" & 
+plot_lst(res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
+                  res_df$fhist == "roller-coaster" &
                   is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ],
          name = "3.2.1/noise_comb_f.a_r.a_roller-coaster")
-plot_lst(res_df[res_df$options == "option_f:a option_r:b option_b:a MK:1.5" & 
-                  res_df$fhist == "roller-coaster" & 
+plot_lst(res_df[res_df$options == "option_f:a option_r:b option_b:a MK:1.5" &
+                  res_df$fhist == "roller-coaster" &
                   is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ],
          name = "3.2.1/noise_comb_f.a_r.b_roller-coaster")
 
@@ -557,7 +573,7 @@ plot_factor <- function(scenarios, names, res_path = NULL, save = FALSE,
   
   # ### reference values
   if (!is.null(refpts)) {
-    p <- p + 
+    p <- p +
       geom_hline(data = df_ref, aes(yintercept = data), colour = "black",
                  linetype = "dotted")
   }
@@ -566,18 +582,18 @@ plot_factor <- function(scenarios, names, res_path = NULL, save = FALSE,
     p <- p + geom_line(aes(colour = stock))
     if (!isTRUE(median)) {
       p <- p +
-        geom_ribbon(aes(x = year, ymin = `5%`, ymax = `95%`, fill = stock), 
+        geom_ribbon(aes(x = year, ymin = `5%`, ymax = `95%`, fill = stock),
                     alpha = 0.15) +
-        geom_ribbon(aes(x = year, ymin = `25%`, ymax = `75%`, fill = stock), 
+        geom_ribbon(aes(x = year, ymin = `25%`, ymax = `75%`, fill = stock),
                     alpha = 0.25)
     }
   } else {
     p <- p + geom_line()
     if (!isTRUE(median)) {
       p <- p +
-        geom_ribbon(aes(x = year, ymin = `5%`, ymax = `95%`), 
+        geom_ribbon(aes(x = year, ymin = `5%`, ymax = `95%`),
                     alpha = 0.15) +
-        geom_ribbon(aes(x = year, ymin = `25%`, ymax = `75%`), 
+        geom_ribbon(aes(x = year, ymin = `25%`, ymax = `75%`),
                     alpha = 0.25)
     }
   }
@@ -588,7 +604,7 @@ plot_factor <- function(scenarios, names, res_path = NULL, save = FALSE,
     ylim(0, NA) +
     theme_bw() +
     ylab("")
-
+  
   
   # data_refpts <- rbind(data.frame(qname = "L_mean",
   #                                 y = mean(attr(stk, "refpts")["LFeFmsy"])),
@@ -619,7 +635,7 @@ plot_factor <- function(scenarios, names, res_path = NULL, save = FALSE,
 # refpts_lst <- lapply(OM_list[1:15], function(x){
 #   refpts(x$brp)
 # })
-# names(refpts_lst) <- unlist(lapply(strsplit(names(refpts_lst), split = "_"), 
+# names(refpts_lst) <- unlist(lapply(strsplit(names(refpts_lst), split = "_"),
 #                                    function(x){
 #   x[[1]]
 # }))
@@ -631,17 +647,17 @@ refpts_lst <- readRDS("input/refpts.rds")
 ### 3.2.1 perfect knowledge r ####
 ### ------------------------------------------------------------------------ ###
 
-res_df[res_df$catch_rule == "3.2.1" & res_df$stock == "pol-nsea" & 
-       res_df$fhist %in% c("one-way") &
-       res_df$options %in% c("option_r:a", "option_r:b"), ]
+res_df[res_df$catch_rule == "3.2.1" & res_df$stock == "pol-nsea" &
+         res_df$fhist %in% c("one-way") &
+         res_df$options %in% c("option_r:a", "option_r:b"), ]
 
-p <- plot_factor(scenarios = c(7, 8), 
+p <- plot_factor(scenarios = c(7, 8),
                  names = c("r:a", "r:b"), quants = c("rec", "ssb", "catch", "fbar"),
                  tracking_factors = c("HCR3.2.1r"),
                  res_path = "",
                  save = FALSE, file_name = "", ncol = 2)
 #stk7 <- attr(readRDS("output/perfect_knowledge/combined/7.rds"), "refpts")
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar", "HCR3.2.1r"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar", "HCR3.2.1r"),
                       data = c(refpts_lst$`pol-nsea`["msy", "ssb"],
                                refpts_lst$`pol-nsea`["msy", "yield"],
                                refpts_lst$`pol-nsea`["msy", "harvest"], 1))
@@ -656,20 +672,20 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 
 ### risk plot
 ### "risk" plots
-df_plot <- res_df[res_df$catch_rule == "3.2.1" & 
-                  res_df$uncertainty == "perfect_knowledge" &
-                  res_df$options %in% c("option_r:a", "option_r:b"), ]
+df_plot <- res_df[res_df$catch_rule == "3.2.1" &
+                    res_df$uncertainty == "perfect_knowledge" &
+                    res_df$options %in% c("option_r:a", "option_r:b"), ]
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "options", "fhist"),
                 measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
-levels(df_plot$variable) <- c("p(SSB<B[lim])", 
+levels(df_plot$variable) <- c("p(SSB<B[lim])",
                               ("iter~collapse"), "rel.~yield")
 df_plot$options <- as.factor(df_plot$options)
 #levels(df_plot$options) <- c()
 
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) +
@@ -688,20 +704,20 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### 3.2.1 perfect knowledge f ####
 ### ------------------------------------------------------------------------ ###
 
-res_df[res_df$catch_rule == "3.2.1" & res_df$stock == "pol-nsea" & 
+res_df[res_df$catch_rule == "3.2.1" & res_df$stock == "pol-nsea" &
          res_df$fhist %in% c("one-way", "roller-coaster") &
          res_df$options %in% c("option_f:a perfect_knowledge:TRUE"), ]
 
-p <- plot_factor(scenarios = c(214), 
+p <- plot_factor(scenarios = c(214),
                  names = c(""), quants = c("rec", "ssb", "catch", "fbar"),
                  tracking_factors = c("L_mean", "HCR3.2.1f"),
                  res_path = "",
                  save = FALSE, file_name = "", ncol = 2)
 stk7 <- readRDS("output/perfect_knowledge/combined/7.rds")
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar", "HCR3.2.1f", "L_mean"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar", "HCR3.2.1f", "L_mean"),
                       data = c(refpts_lst$`pol-nsea`["msy", "ssb"],
                                refpts_lst$`pol-nsea`["msy", "yield"],
-                               refpts_lst$`pol-nsea`["msy", "harvest"], 
+                               refpts_lst$`pol-nsea`["msy", "harvest"],
                                1, attr(stk7, "refpts")["LFeFmsy",1]))
 ref_lim <- data.frame(qname = "ssb", data = B_lim)
 p <- p +
@@ -711,7 +727,7 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "perfect_knowledge_f.a_LFeFmsy_pol-nsea_one_way.png"), plot = p,
        width = 18, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### roller-coaster
-p <- plot_factor(scenarios = c(259), 
+p <- plot_factor(scenarios = c(259),
                  names = c(""), quants = c("rec", "ssb", "catch", "fbar"),
                  tracking_factors = c("L_mean", "HCR3.2.1f"),
                  res_path = "",
@@ -725,18 +741,18 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 
 
 ### "risk" plots
-df_plot <- res_df[res_df$catch_rule == "3.2.1" & 
-                  res_df$uncertainty == "perfect_knowledge" &
-                  res_df$options %in% c("option_f:a", "option_f:a perfect_knowledge:TRUE",
-                                        "option_f:a MK:1.5"), ]
+df_plot <- res_df[res_df$catch_rule == "3.2.1" &
+                    res_df$uncertainty == "perfect_knowledge" &
+                    res_df$options %in% c("option_f:a", "option_f:a perfect_knowledge:TRUE",
+                                          "option_f:a MK:1.5"), ]
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "options", "fhist"),
                 measure.vars = c("collapse_iter"))
 df_plot$options <- as.factor(df_plot$options)
 levels(df_plot$options) <- c("M&K from OM", "M/K=1.5", "LF=FMSY")
 
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) +
@@ -754,23 +770,23 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### examples for combinations ####
 ### ------------------------------------------------------------------------ ###
 
-res_df[res_df$catch_rule == "3.2.1" & res_df$stock == "pol-nsea" & 
-       res_df$fhist == "one-way" &
-       res_df$options == "option_f:a perfect_knowledge:TRUE option_r:a option_b:a", ]
+res_df[res_df$catch_rule == "3.2.1" & res_df$stock == "pol-nsea" &
+         res_df$fhist == "one-way" &
+         res_df$options == "option_f:a perfect_knowledge:TRUE option_r:a option_b:a", ]
 
-p <- plot_factor(scenarios = 392, 
-            names = c(""), quants = c("rec", "ssb", "catch", "fbar"),
-            tracking_factors = c("L_mean", "HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),
-            res_path = "",
-            save = FALSE, file_name = "", ncol = 2)
+p <- plot_factor(scenarios = 392,
+                 names = c(""), quants = c("rec", "ssb", "catch", "fbar"),
+                 tracking_factors = c("L_mean", "HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),
+                 res_path = "",
+                 save = FALSE, file_name = "", ncol = 2)
 stk392refs <- attr(readRDS("output/perfect_knowledge/combined/392.rds"), "refpts")
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar", "L_mean", "HCR3.2.1r", 
-                                "HCR3.2.1f", "HCR3.2.1b"), 
-                     data = c(refpts_lst$`pol-nsea`["msy", "ssb"],
-                              refpts_lst$`pol-nsea`["msy", "yield"],
-                              refpts_lst$`pol-nsea`["msy", "harvest"],
-                              stk392refs["LFeFmsy", 1],
-                              1, 1, 1))
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar", "L_mean", "HCR3.2.1r",
+                                "HCR3.2.1f", "HCR3.2.1b"),
+                      data = c(refpts_lst$`pol-nsea`["msy", "ssb"],
+                               refpts_lst$`pol-nsea`["msy", "yield"],
+                               refpts_lst$`pol-nsea`["msy", "harvest"],
+                               stk392refs["LFeFmsy", 1],
+                               1, 1, 1))
 ref_lim <- data.frame(qname = "ssb", data = B_lim)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
@@ -786,17 +802,17 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### ------------------------------------------------------------------------ ###
 ### risk plots for default parametrization
 df_plot <- res_df[res_df$catch_rule == "3.2.1" &
-                    res_df$options %in% 
+                    res_df$options %in%
                     c("option_f:a perfect_knowledge:TRUE option_r:a option_b:a",
                       "option_f:a perfect_knowledge:TRUE option_r:b option_b:a",
                       "option_f:b perfect_knowledge:TRUE option_r:a option_b:a",
                       "option_f:b perfect_knowledge:TRUE option_r:b option_b:a"), ]
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "options"),
                 measure.vars = c("ssb_below_blim_total", "ssb_below_blim_iter",
                                  "collapse_total", "collapse_iter"))
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "options"),
                 measure.vars = c("collapse_iter"))
 ### set factor levels for options
@@ -805,13 +821,13 @@ levels(df_plot$options) <- c("f:a & r:a", "f:a & r:b", "f:b & r:a",
                              "f:b & r:b")
 
 ### number of collapse iterations
-p <- ggplot(data = df_plot[df_plot$variable == "collapse_iter", ], 
+p <- ggplot(data = df_plot[df_plot$variable == "collapse_iter", ],
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity", position = "dodge") +
-  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) + 
+  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) +
   facet_grid(options ~ fhist) +
   theme_bw() +
-  ylim(0, NA) + 
+  ylim(0, NA) +
   theme(axis.text.x = element_blank()) +
   ylab("proportion of collapsed iterations")
 p
@@ -819,13 +835,13 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "combs_risks_iter.png"), plot = p,
        width = 15, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### risk Blim
-p <- ggplot(data = df_plot[df_plot$variable == "ssb_below_blim_total", ], 
+p <- ggplot(data = df_plot[df_plot$variable == "ssb_below_blim_total", ],
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity", position = "dodge") +
-  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) + 
+  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) +
   facet_grid(options ~ fhist) +
   theme_bw() +
-  ylim(0, NA) + 
+  ylim(0, NA) +
   theme(axis.text.x = element_blank()) +
   ylab("probability SSB < Blim")
 p
@@ -838,13 +854,13 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### examples for combinations with noise ####
 ### ------------------------------------------------------------------------ ###
 
-res_df[res_df$catch_rule == "3.2.1" & res_df$stock == "pol-nsea" & 
+res_df[res_df$catch_rule == "3.2.1" & res_df$stock == "pol-nsea" &
          res_df$fhist %in% c("one-way", "roller-coaster") &
          res_df$options %in% c("option_f:a option_r:a option_b:a MK:1.5",
                                "option_f:a perfect_knowledge:TRUE option_r:a option_b:a") &
          is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ]
 ### pol-nsea roller-coaster
-p <- plot_factor(scenarios = c(407, 643), 
+p <- plot_factor(scenarios = c(407, 643),
                  names = c("pol-nsea", "pol-nsea\n+noise"), quants = c("rec", "ssb", "catch", "fbar"),
                  tracking_factors = c("L_mean", "HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),
                  res_path = "",
@@ -856,7 +872,7 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_roller-coaster_r.a_f.a_b.a.png"), plot = p,
        width = 15, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### zoom into f
-p <- plot_factor(scenarios = c(407, 643), 
+p <- plot_factor(scenarios = c(407, 643),
                  names = c("pol-nsea", "pol-nsea\n+noise"), quants = NULL,
                  tracking_factors = c("HCR3.2.1f"),
                  res_path = "",
@@ -868,7 +884,7 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
        type = "cairo-png")
 
 ### one-way
-p <- plot_factor(scenarios = c(392, 628), 
+p <- plot_factor(scenarios = c(392, 628),
                  names = c("pol-nsea", "pol-nsea\n+noise"), quants = c("rec", "ssb", "catch", "fbar"),
                  tracking_factors = c("L_mean", "HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),
                  res_path = "",
@@ -887,31 +903,31 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### ------------------------------------------------------------------------ ###
 ### risk plots for default parametrization
 df_plot <- res_df[res_df$catch_rule == "3.2.1" &
-                    res_df$options %in% 
+                    res_df$options %in%
                     c("option_f:a option_r:a option_b:a MK:1.5",
                       "option_f:a option_r:b option_b:a MK:1.5") &
                     is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ]
 
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "options"),
-                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
-levels(df_plot$variable) <- c("p(SSB<Blim)", 
+levels(df_plot$variable) <- c("p(SSB<Blim)",
                               ("iter collapse"), "rel. yield")
 
 ### set factor levels for options
 df_plot$options <- as.factor(df_plot$options)
 levels(df_plot$options) <- c("f:a & r:a & b:a", "f:a & r:b & b:a")
 
-### 
-p <- ggplot(data = df_plot, 
+###
+p <- ggplot(data = df_plot,
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity", position = "dodge") +
-  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) + 
+  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) +
   facet_grid(variable+options ~ fhist) +
   theme_bw() +
-  ylim(0, NA) + 
+  ylim(0, NA) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 p
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
@@ -919,13 +935,13 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
        width = 20, height = 22, units = "cm", dpi = 300, type = "cairo-png")
 
 ### risk Blim
-p <- ggplot(data = df_plot[df_plot$variable == "ssb_below_blim_total", ], 
+p <- ggplot(data = df_plot[df_plot$variable == "ssb_below_blim_total", ],
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity", position = "dodge") +
-  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) + 
+  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) +
   facet_grid(options ~ fhist) +
   theme_bw() +
-  ylim(0, NA) + 
+  ylim(0, NA) +
   theme(axis.text.x = element_blank()) +
   ylab("probability SSB < Blim")
 p
@@ -942,37 +958,37 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### one-way
 ### f:a r:a
 df <- res_df[res_df$catch_rule == "3.2.1" &
-              res_df$stock == "pol-nsea" & res_df$fhist == "one-way" & 
-              res_df$uncertainty == "observation_error" &
-              !is.na(res_df$b_w) &
-             grepl(x = res_df$options, pattern = "^option_f:a option_r:a option_b:a MK:1.5*"), ]
+               res_df$stock == "pol-nsea" & res_df$fhist == "one-way" &
+               res_df$uncertainty == "observation_error" &
+               !is.na(res_df$b_w) &
+               grepl(x = res_df$options, pattern = "^option_f:a option_r:a option_b:a MK:1.5*"), ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$b_w, 
+                 names = df$b_w,
                  save = FALSE, ncol = 1, median = TRUE)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["pol-nsea"]]["msy", "ssb"],
                                refpts_lst[["pol-nsea"]]["msy", "yield"],
                                refpts_lst[["pol-nsea"]]["msy", "harvest"]))
 ref_lim <- data.frame(qname = "ssb", data = B_lim)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("w")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_b_w_one-way_f.a_r.a.png"), plot = p,
        width = 15, height = 12, units = "cm", dpi = 300, type = "cairo-png")
 ### f:a r:b
 df <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & res_df$fhist == "one-way" & 
+               res_df$stock == "pol-nsea" & res_df$fhist == "one-way" &
                res_df$uncertainty == "observation_error" &
                !is.na(res_df$b_w) &
                grepl(x = res_df$options, pattern = "^option_f:a option_r:b option_b:a MK:1.5*"), ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$b_w, 
+                 names = df$b_w,
                  save = FALSE, ncol = 1, median = TRUE)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("w")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_b_w_one-way_f.a_r.b.png"), plot = p,
@@ -980,37 +996,37 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### roller-coaster
 ### f:a r:a
 df <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & res_df$fhist == "roller-coaster" & 
+               res_df$stock == "pol-nsea" & res_df$fhist == "roller-coaster" &
                res_df$uncertainty == "observation_error" &
                !is.na(res_df$b_w) &
                grepl(x = res_df$options, pattern = "^option_f:a option_r:a option_b:a MK:1.5*"), ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$b_w, 
+                 names = df$b_w,
                  save = FALSE, ncol = 1, median = TRUE)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["pol-nsea"]]["msy", "ssb"],
                                refpts_lst[["pol-nsea"]]["msy", "yield"],
                                refpts_lst[["pol-nsea"]]["msy", "harvest"]))
 ref_lim <- data.frame(qname = "ssb", data = B_lim)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("w")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_b_w_roller-coaster_f.a_r.a.png"), plot = p,
        width = 15, height = 12, units = "cm", dpi = 300, type = "cairo-png")
 ### f:a r:b
 df <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & res_df$fhist == "roller-coaster" & 
+               res_df$stock == "pol-nsea" & res_df$fhist == "roller-coaster" &
                res_df$uncertainty == "observation_error" &
                !is.na(res_df$b_w) &
                grepl(x = res_df$options, pattern = "^option_f:a option_r:b option_b:a MK:1.5*"), ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$b_w, 
+                 names = df$b_w,
                  save = FALSE, ncol = 1, median = TRUE)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("w")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_b_w_roller-coaster_f.a_r.b.png"), plot = p,
@@ -1018,21 +1034,21 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 
 ### risk plot
 df_plot <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & 
-               res_df$uncertainty == "observation_error" &
-               !is.na(res_df$b_w) &
-                is.na(res_df$b_z) & is.na(res_df$upper_constraint), ]
+                    res_df$stock == "pol-nsea" &
+                    res_df$uncertainty == "observation_error" &
+                    !is.na(res_df$b_w) &
+                    is.na(res_df$b_z) & is.na(res_df$upper_constraint), ]
 df_plot$options <- substr(x = df_plot$options, start = 1, stop = 39)
 df_plot$options <- as.factor(df_plot$options)
 levels(df_plot$options) <- c("r:a & f:a & b:a", "r:b & f:a & b:a")
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "b_w", "options"),
-                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
-levels(df_plot$variable) <- c("p(SSB<Blim)", 
+levels(df_plot$variable) <- c("p(SSB<Blim)",
                               ("iter collapse"), "rel. yield")
 
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = b_w, y = value, colour = fhist)) +
   geom_line() + geom_point() +
   facet_grid(variable ~ options) +
@@ -1054,43 +1070,43 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### one-way
 ### f:a r:a
 df <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & res_df$fhist == "one-way" & 
+               res_df$stock == "pol-nsea" & res_df$fhist == "one-way" &
                res_df$uncertainty == "observation_error" &
                is.na(res_df$b_w) &
-               grepl(x = res_df$options, 
+               grepl(x = res_df$options,
                      pattern = "^option_f:a option_r:a option_b:a MK:1.5*") &
                is.na(res_df$b_z) & is.na(res_df$upper_constraint), ]
 df$HCRmult[is.na(df$HCRmult)] <- 1
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$HCRmult, 
+                 names = df$HCRmult,
                  save = FALSE, ncol = 1, median = TRUE)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["pol-nsea"]]["msy", "ssb"],
                                refpts_lst[["pol-nsea"]]["msy", "yield"],
                                refpts_lst[["pol-nsea"]]["msy", "harvest"]))
 ref_lim <- data.frame(qname = "ssb", data = B_lim)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("advice\nmultiplier")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_multiplier_one-way_f.a_r.a.png"), plot = p,
        width = 15, height = 12, units = "cm", dpi = 300, type = "cairo-png")
 ### f:a r:b
 df <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & res_df$fhist == "one-way" & 
+               res_df$stock == "pol-nsea" & res_df$fhist == "one-way" &
                res_df$uncertainty == "observation_error" &
                is.na(res_df$b_w) &
-               grepl(x = res_df$options, 
+               grepl(x = res_df$options,
                      pattern = "^option_f:a option_r:b option_b:a MK:1.5*") &
                is.na(res_df$b_z) & is.na(res_df$upper_constraint), ]
 df$HCRmult[is.na(df$HCRmult)] <- 1
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$HCRmult, 
+                 names = df$HCRmult,
                  save = FALSE, ncol = 1, median = TRUE)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("advice\nmultiplier")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_multiplier_one-way_f.a_r.b.png"), plot = p,
@@ -1098,39 +1114,39 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### roller-coaster
 ### f:a r:a
 df <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & res_df$fhist == "roller-coaster" & 
+               res_df$stock == "pol-nsea" & res_df$fhist == "roller-coaster" &
                res_df$uncertainty == "observation_error" &
                is.na(res_df$b_w) &
-               grepl(x = res_df$options, 
+               grepl(x = res_df$options,
                      pattern = "^option_f:a option_r:a option_b:a MK:1.5*") &
                is.na(res_df$b_z) & is.na(res_df$upper_constraint), ]
 df$HCRmult[is.na(df$HCRmult)] <- 1
 
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$HCRmult, 
+                 names = df$HCRmult,
                  save = FALSE, ncol = 1, median = TRUE)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("advice\nmultiplier")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_multiplier_roller-coaster_f.a_r.a.png"), plot = p,
        width = 15, height = 12, units = "cm", dpi = 300, type = "cairo-png")
 ### f:a r:b
 df <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & res_df$fhist == "roller-coaster" & 
+               res_df$stock == "pol-nsea" & res_df$fhist == "roller-coaster" &
                res_df$uncertainty == "observation_error" &
                is.na(res_df$b_w) &
-               grepl(x = res_df$options, 
+               grepl(x = res_df$options,
                      pattern = "^option_f:a option_r:b option_b:a MK:1.5*") &
                is.na(res_df$b_z) & is.na(res_df$upper_constraint), ]
 df$HCRmult[is.na(df$HCRmult)] <- 1
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$HCRmult, 
+                 names = df$HCRmult,
                  save = FALSE, ncol = 1, median = TRUE)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("advice\nmultiplier")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
                          "noise_combs_pol-nsea_multiplier_roller-coaster_f.a_r.b.png"), plot = p,
@@ -1139,25 +1155,25 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 
 ### risk plot
 df_plot <- res_df[res_df$catch_rule == "3.2.1" &
-               res_df$stock == "pol-nsea" & 
-               res_df$uncertainty == "observation_error" &
-               is.na(res_df$b_w) &
-               (grepl(x = res_df$options, 
-                      pattern = "^option_f:a option_r:a option_b:a MK:1.5*") |
-               grepl(x = res_df$options, 
-                     pattern = "^option_f:a option_r:b option_b:a MK:1.5*")) &
-              is.na(res_df$b_z) & is.na(res_df$upper_constraint), ]
+                    res_df$stock == "pol-nsea" &
+                    res_df$uncertainty == "observation_error" &
+                    is.na(res_df$b_w) &
+                    (grepl(x = res_df$options,
+                           pattern = "^option_f:a option_r:a option_b:a MK:1.5*") |
+                       grepl(x = res_df$options,
+                             pattern = "^option_f:a option_r:b option_b:a MK:1.5*")) &
+                    is.na(res_df$b_z) & is.na(res_df$upper_constraint), ]
 df_plot$HCRmult[is.na(df_plot$HCRmult)] <- 1
 df_plot$options <- as.factor(df_plot$options)
 levels(df_plot$options) <- c("r:a & f:a & b:a", "r:b & f:a & b:a")
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "HCRmult", "options"),
-                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
-levels(df_plot$variable) <- c("p(SSB<Blim)", 
+levels(df_plot$variable) <- c("p(SSB<Blim)",
                               ("iter collapse"), "rel. yield")
 
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = HCRmult, y = value, colour = fhist)) +
   geom_line() + geom_point() +
   facet_grid(variable ~ options) +
@@ -1182,7 +1198,7 @@ scns <- res_df$scenario[res_df$catch_rule == "3.2.2"]
   scn_p <- res_df[x, ]
   p <- plot_factor(scenarios = scn_p$scenario, quants = c("rec", "ssb", "catch", "fbar"),
                    names = c(""), save = FALSE, ncol = 1)
-  ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+  ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                         data = c(refpts_lst[[ac(scn_p$stock)]]["msy", "ssb"],
                                  refpts_lst[[ac(scn_p$stock)]]["msy", "yield"],
                                  refpts_lst[[ac(scn_p$stock)]]["msy", "harvest"]))
@@ -1190,7 +1206,7 @@ scns <- res_df$scenario[res_df$catch_rule == "3.2.2"]
   p <- p +
     geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
     geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted")
-  ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/", 
+  ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                            scn_p$scenario,".png"), plot = p,
          width = 15, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 })
@@ -1200,12 +1216,12 @@ scns <- res_df$scenario[res_df$catch_rule == "3.2.2"]
 ### pol-nsea
 ### add uncertainty
 res_df[res_df$catch_rule == "3.2.2" &
-                res_df$TAC == 2 &
-                res_df$stock == "pol-nsea" & res_df$fhist == "one-way", ]
+         res_df$TAC == 2 &
+         res_df$stock == "pol-nsea" & res_df$fhist == "one-way", ]
 p <- plot_factor(scenarios = c(182, 362), quants = c("rec", "ssb", "catch", "fbar"),
-                 names = c("perfect\nknowledge", "observation\nerror"), 
+                 names = c("perfect\nknowledge", "observation\nerror"),
                  save = FALSE, ncol = 1)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["pol-nsea"]]["msy", "ssb"],
                                refpts_lst[["pol-nsea"]]["msy", "yield"],
                                refpts_lst[["pol-nsea"]]["msy", "harvest"]))
@@ -1222,19 +1238,19 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
 ### HCR multiplier
 
 df <- res_df2[res_df$catch_rule == "3.2.2" &
-         res_df$stock == "her-nis" & res_df$fhist == "one-way" & 
-         res_df$uncertainty == "observation_error", ]
+                res_df$stock == "her-nis" & res_df$fhist == "one-way" &
+                res_df$uncertainty == "observation_error", ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$HCRmult, 
+                 names = df$HCRmult,
                  save = FALSE, ncol = 1, median = TRUE)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["her-nis"]]["msy", "ssb"],
                                refpts_lst[["her-nis"]]["msy", "yield"],
                                refpts_lst[["her-nis"]]["msy", "harvest"]))
 ref_lim <- data.frame(qname = "ssb", data = 250)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("HCR\nmultiplier")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "0_her-nis_multiplier_one-way.png"), plot = p,
@@ -1242,19 +1258,19 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
 
 ### same for roller-coaster
 df <- res_df2[res_df$catch_rule == "3.2.2" &
-                res_df$stock == "her-nis" & res_df$fhist == "roller-coaster" & 
+                res_df$stock == "her-nis" & res_df$fhist == "roller-coaster" &
                 res_df$uncertainty == "observation_error", ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$HCRmult, 
+                 names = df$HCRmult,
                  save = FALSE, ncol = 1, median = TRUE)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["her-nis"]]["msy", "ssb"],
                                refpts_lst[["her-nis"]]["msy", "yield"],
                                refpts_lst[["her-nis"]]["msy", "harvest"]))
 ref_lim <- data.frame(qname = "ssb", data = 250)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("HCR\nmultiplier")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "0_her-nis_multiplier_roller-coaster.png"), plot = p,
@@ -1263,33 +1279,33 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
 ### san-ns4
 ### HCR multiplier
 df <- res_df2[res_df2$catch_rule == "3.2.2" &
-                res_df2$stock == "san-ns4" & res_df2$fhist == "one-way" & 
+                res_df2$stock == "san-ns4" & res_df2$fhist == "one-way" &
                 res_df2$uncertainty == "observation_error", ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$HCRmult, 
+                 names = df$HCRmult,
                  save = FALSE, ncol = 1, median = TRUE)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["san-ns4"]]["msy", "ssb"],
                                refpts_lst[["san-ns4"]]["msy", "yield"],
                                refpts_lst[["san-ns4"]]["msy", "harvest"]))
 ref_lim <- data.frame(qname = "ssb", data = 250)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("HCR\nmultiplier")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "0_san-ns4_multiplier_one-way.png"), plot = p,
        width = 15, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### same for roller-coaster
 df <- res_df2[res_df$catch_rule == "3.2.2" &
-                res_df$stock == "san-ns4" & res_df$fhist == "roller-coaster" & 
+                res_df$stock == "san-ns4" & res_df$fhist == "roller-coaster" &
                 res_df$uncertainty == "observation_error", ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$HCRmult, 
+                 names = df$HCRmult,
                  save = FALSE, ncol = 1, median = TRUE)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("HCR\nmultiplier")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "0_san-ns4_multiplier_roller-coaster.png"), plot = p,
@@ -1297,20 +1313,20 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
 
 
 ### "risk" plots
-df_plot <- res_df2[res_df2$catch_rule == "3.2.2" & 
-                   res_df2$uncertainty == "observation_error" & 
-                   res_df2$stock %in% c("her-nis", "san-ns4") &
-                   res_df2$w == 1.4, ]
+df_plot <- res_df2[res_df2$catch_rule == "3.2.2" &
+                     res_df2$uncertainty == "observation_error" &
+                     res_df2$stock %in% c("her-nis", "san-ns4") &
+                     res_df2$w == 1.4, ]
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "HCRmult"),
-                measure.vars = c("ssb_below_blim_total", "collapse_total", 
+                measure.vars = c("ssb_below_blim_total", "collapse_total",
                                  "rel_yield"))
-levels(df_plot$variable) <- c("p(SSB<B[lim])", 
+levels(df_plot$variable) <- c("p(SSB<B[lim])",
                               ("iter~collapse"), "rel.~yield")
 
-p <- ggplot(data = df_plot, 
-            aes(x = HCRmult, y = value,  colour = stock, 
+p <- ggplot(data = df_plot,
+            aes(x = HCRmult, y = value,  colour = stock,
                 linetype = fhist, shape = fhist)) +
   geom_line() + geom_point() +
   facet_wrap(~ variable, labeller = "label_parsed") +
@@ -1329,90 +1345,90 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
 ### san-ns4
 ### w
 df <- res_df2[res_df2$catch_rule == "3.2.2" &
-                res_df2$stock == "san-ns4" & res_df2$fhist == "one-way" & 
+                res_df2$stock == "san-ns4" & res_df2$fhist == "one-way" &
                 res_df2$uncertainty == "observation_error" &
                 res_df2$HCRmult == 1, ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$w, 
+                 names = df$w,
                  save = FALSE, ncol = 1, median = TRUE)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["san-ns4"]]["msy", "ssb"],
                                refpts_lst[["san-ns4"]]["msy", "yield"],
                                refpts_lst[["san-ns4"]]["msy", "harvest"]))
 ref_lim <- data.frame(qname = "ssb", data = B_lim)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("w")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "0_san-ns4_w_one-way.png"), plot = p,
        width = 15, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### same for roller-coaster
 df <- res_df2[res_df2$catch_rule == "3.2.2" &
-                res_df2$stock == "san-ns4" & res_df2$fhist == "roller-coaster" & 
+                res_df2$stock == "san-ns4" & res_df2$fhist == "roller-coaster" &
                 res_df2$uncertainty == "observation_error" &
                 res_df2$HCRmult == 1, ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$w, 
+                 names = df$w,
                  save = FALSE, ncol = 1, median = TRUE)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("w")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "0_san-ns4_w_roller-coaster.png"), plot = p,
        width = 15, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### her-nis
 df <- res_df2[res_df2$catch_rule == "3.2.2" &
-                res_df2$stock == "her-nis" & res_df2$fhist == "one-way" & 
+                res_df2$stock == "her-nis" & res_df2$fhist == "one-way" &
                 res_df2$uncertainty == "observation_error" &
                 res_df2$HCRmult == 1, ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$w, 
+                 names = df$w,
                  save = FALSE, ncol = 1, median = TRUE)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst[["san-ns4"]]["msy", "ssb"],
                                refpts_lst[["san-ns4"]]["msy", "yield"],
                                refpts_lst[["san-ns4"]]["msy", "harvest"]))
 ref_lim <- data.frame(qname = "ssb", data = B_lim)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("w")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "0_her-nis_w_one-way.png"), plot = p,
        width = 15, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### same for roller-coaster
 df <- res_df2[res_df2$catch_rule == "3.2.2" &
-                res_df2$stock == "her-nis" & res_df2$fhist == "roller-coaster" & 
+                res_df2$stock == "her-nis" & res_df2$fhist == "roller-coaster" &
                 res_df2$uncertainty == "observation_error" &
                 res_df2$HCRmult == 1, ]
 p <- plot_factor(scenarios = df$scenario, quants = c("rec", "ssb", "catch", "fbar"),
-                 names = df$w, 
+                 names = df$w,
                  save = FALSE, ncol = 1, median = TRUE)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
-  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") + 
+  geom_hline(data = ref_lim, aes(yintercept = data), linetype = "dotted") +
   scale_colour_discrete("w")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "0_her-nis_w_roller-coaster.png"), plot = p,
        width = 15, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 
 ### "risk" plots
-df_plot <- res_df2[res_df2$catch_rule == "3.2.2" & 
-                   res_df2$uncertainty == "observation_error" & 
-                   res_df2$stock %in% c("her-nis", "san-ns4") &
-                   res_df2$HCRmult == 1, ]
+df_plot <- res_df2[res_df2$catch_rule == "3.2.2" &
+                     res_df2$uncertainty == "observation_error" &
+                     res_df2$stock %in% c("her-nis", "san-ns4") &
+                     res_df2$HCRmult == 1, ]
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "w"),
-                measure.vars = c("ssb_below_blim_total", "collapse_total", 
+                measure.vars = c("ssb_below_blim_total", "collapse_total",
                                  "rel_yield"))
-levels(df_plot$variable) <- c("p(SSB<B[lim])", 
+levels(df_plot$variable) <- c("p(SSB<B[lim])",
                               ("iter~collapse"), "rel.~yield")
 
-p <- ggplot(data = df_plot, 
-            aes(x = w, y = value,  colour = stock, 
+p <- ggplot(data = df_plot,
+            aes(x = w, y = value,  colour = stock,
                 linetype = fhist, shape = fhist)) +
   geom_line() + geom_point() +
   facet_wrap(~ variable, labeller = "label_parsed") +
@@ -1428,27 +1444,27 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
 
 ### ------------------------------------------------------------------------ ###
 ### risk plots for default parametrization
-df_plot <- subset(res_df, catch_rule == "3.2.2" & 
+df_plot <- subset(res_df, catch_rule == "3.2.2" &
                     uncertainty == "observation_error" &
                     is.na(HCRmult) & is.na(w))
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist"),
                 measure.vars = c("ssb_below_blim_total", "collapse_total",
                                  "rel_yield"))
 levels(df_plot$variable) <- c("p(SSB<Blim)", "iter collapse", "rel. yield")
 
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity", position = "dodge") +
-  geom_text(aes(label = round(value, 3), y = value + 0.05), position = "dodge", 
-            size = 2) + 
+  geom_text(aes(label = round(value, 3), y = value + 0.05), position = "dodge",
+            size = 2) +
   facet_grid(variable ~ fhist) +
   theme_bw() +
-  ylim(0, NA) + 
+  ylim(0, NA) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-  #scale_shape_discrete("fishing\nhistory") +
-  #scale_linetype_discrete("fishing\nhistory")
+#scale_shape_discrete("fishing\nhistory") +
+#scale_linetype_discrete("fishing\nhistory")
 p
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
                          "all_risks.png"), plot = p,
@@ -1463,16 +1479,16 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.2/",
 ### example pol-nsea
 res_df[res_df$catch_rule == "3.1" & res_df$stock == "pol-nsea", ]
 stk613 <- readRDS("output/perfect_knowledge/combined/613.rds")
-p <- plot_factor(scenarios = 613, 
+p <- plot_factor(scenarios = 613,
                  names = c(""), quants = c("rec", "ssb", "catch", "fbar"),
                  tracking_factors = c("spict_f", "spict_fmsy", "spict_b", "spict_bmsy"),
                  res_path = "",
                  save = FALSE, file_name = "", ncol = 2)
-ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"), 
+ref_MSY <- data.frame(qname = c("ssb", "catch", "fbar"),
                       data = c(refpts_lst$`pol-nsea`["msy", "ssb"],
                                refpts_lst$`pol-nsea`["msy", "yield"],
                                refpts_lst$`pol-nsea`["msy", "harvest"]
-                               ))
+                      ))
 ref_lim <- data.frame(qname = "ssb", data = B_lim)
 p <- p +
   geom_hline(data = ref_MSY,  aes(yintercept = data), linetype = "dashed") +
@@ -1548,19 +1564,19 @@ ggsave(filename = paste0("input/OMs_fhist.png"),
 OM_list <- readRDS("../../wklifeFL/exec/oms.rds")
 stk_ex <- OM_list[[17]]$stk_full
 ### extract quants
-stk_ex <- FLQuants(Rec = rec(stk_ex), SSB = ssb(stk_ex), Catch = catch(stk_ex), 
+stk_ex <- FLQuants(Rec = rec(stk_ex), SSB = ssb(stk_ex), Catch = catch(stk_ex),
                    Harvest = fbar(stk_ex))
 ### quantiles
 stk_ex <- lapply(stk_ex, quantile, probs = c(0.05, 0.25, 0.5, 0.75, 0.95),
-                na.rm = TRUE)
+                 na.rm = TRUE)
 ### data frame
 stk_ex <- as.data.frame(stk_ex)
 ### reshape
 stk_ex <- dcast(stk_ex, qname + year ~ iter, value.var = "data")
 ### plot
 
-p <- ggplot(data = stk_ex, 
-            aes(x = year, y = `50%`)) + 
+p <- ggplot(data = stk_ex,
+            aes(x = year, y = `50%`)) +
   geom_ribbon(aes(x = year, ymin = `5%`, ymax = `95%`), alpha = 0.15) +
   geom_ribbon(aes(x = year, ymin = `25%`, ymax = `75%`),  alpha = 0.25) +
   geom_line() +
@@ -1583,7 +1599,7 @@ ggsave(filename = paste0("input/OMs_fhist_pol-nsea.png"),
 ### SRR plot
 ### ------------------------------------------------------------------------ ###
 df <- data.frame(SSB = seq(0, 1000, length.out = 10000))
-df$rec <- (12.990 * df$SSB / (90.909 + df$SSB)) / 
+df$rec <- (12.990 * df$SSB / (90.909 + df$SSB)) /
   ((12.990 * 1000 / (90.909 + 1000)))
 ggplot(df, aes(x = SSB, y = rec)) + geom_line() + theme_bw() +
   geom_hline(yintercept = 0.7, colour = "red") +
@@ -1620,13 +1636,13 @@ df_refs$LFeFmsy <- unlist(lapply(lh_list, function(x){
 ### calculate length with M & K
 df_refs$Lcalc <- unlist(lapply(1:15, function(x){
   lhpar <- lhpar_list[[x]][, 1]
-  c((lhpar["L_inf"] + 2 * lhpar["M"]/lhpar["K"] * lc_list[x]) / 
-    (1 + 2 * lhpar["M"]/lhpar["K"]))
+  c((lhpar["L_inf"] + 2 * lhpar["M"]/lhpar["K"] * lc_list[x]) /
+      (1 + 2 * lhpar["M"]/lhpar["K"]))
 }))
 ### calculate with M/K = 1.5
 df_refs$LMK15 <- unlist(lapply(1:15, function(x){
   lhpar <- lhpar_list[[x]][, 1]
-  c((lhpar["L_inf"] + 2 * 1.5 * lc_list[x]) / 
+  c((lhpar["L_inf"] + 2 * 1.5 * lc_list[x]) /
       (1 + 2 * 1.5))
 }))
 ### add stock names
@@ -1639,7 +1655,7 @@ library(ggplot2)
 df_refs2 <- melt(data = df_refs, id.vars = c("stock"))
 ### plot
 p <- ggplot(data = df_refs2, aes(x = stock, y = value, fill = variable)) +
-  geom_bar(stat = "identity", position = "dodge") + 
+  geom_bar(stat = "identity", position = "dodge") +
   theme_bw() +
   ylab("reference length") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
@@ -1654,7 +1670,7 @@ ggsave(filename = paste0("input/reference_lengths.png"),
 ### ------------------------------------------------------------------------ ###
 
 ### 3.2.1 combinations & perfect knowledge
-select = res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:a option_b:a" & 
+select = res_df[res_df$options == "option_f:a perfect_knowledge:TRUE option_r:a option_b:a" &
                   res_df$fhist == "one-way", ]
 
 stk_lst <- lapply(select$scenario, function(x){
@@ -1743,7 +1759,7 @@ ggplot(ssb_list[!ssb_list$qname %in% c("her-nis", "san-ns4"), ],
 
 
 ### with noise
-select <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" & 
+select <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
                    res_df$fhist == "one-way" & is.na(res_df$HCRmult) &
                    is.na(res_df$upper_constraint) &
                    is.na(res_df$b_z), ]
@@ -1791,17 +1807,17 @@ ssb_list$group[ssb_list$qname %in% g5] <- paste(g5, collapse = "_")
 ssb_list$group[ssb_list$qname %in% g6] <- paste(g6, collapse = "_")
 
 p <- ggplot(ssb_list[!ssb_list$qname %in% c("her-nis", "san-ns4"), ],
-       aes(x = year, y = data, colour = group, group = qname)) +
+            aes(x = year, y = data, colour = group, group = qname)) +
   geom_line(size = 2) +
   theme_bw()
 
 ### plot for one-way trip
 ### same for roller-coaster
 ### with noise
-select <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" & 
-                      res_df$fhist == "one-way" & is.na(res_df$HCRmult) &
-                      res_df$uncertainty == "observation_error" &
-                      is.na(res_df$upper_constraint), ]
+select <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
+                   res_df$fhist == "one-way" & is.na(res_df$HCRmult) &
+                   res_df$uncertainty == "observation_error" &
+                   is.na(res_df$upper_constraint), ]
 stk_lst <- lapply(select$scenario, function(x){
   readRDS(paste0("output/perfect_knowledge/combined/", x, ".rds"))
 })
@@ -1837,18 +1853,18 @@ ssb_list$rec <- as.data.frame(lapply(stk_lst2, rec))$data
 ssb_list$ssb <- as.data.frame(lapply(stk_lst2, ssb))$data
 
 ### reshape
-ssb_list_res <- melt(data = ssb_list, 
-                        id.vars = c("year", "qname", "group", "used"),
-                        measure.vars = c("ssb", "catch", "rec", "fbar"))
+ssb_list_res <- melt(data = ssb_list,
+                     id.vars = c("year", "qname", "group", "used"),
+                     measure.vars = c("ssb", "catch", "rec", "fbar"))
 ### plot ssb
 p <- ggplot(ssb_list_res[!ssb_list$qname %in% c("her-nis", "san-ns4") &
-                              ssb_list_res$variable == "ssb", ],
+                           ssb_list_res$variable == "ssb", ],
             aes(x = year, y = value, colour = group, group = qname)) +
   geom_line(size = 1) +
   theme_bw() +
   facet_wrap(~variable, scales = "free_y") +
   geom_vline(xintercept = 100) +
-  #scale_linetype_manual(values = c("TRUE" = 6, "FALSE" = 1)) + 
+  #scale_linetype_manual(values = c("TRUE" = 6, "FALSE" = 1)) +
   labs(y = "")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "groups_ssb_one-way.png"), plot = p,
@@ -1856,10 +1872,10 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 
 ### same for roller-coaster
 ### with noise
-select_rc <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" & 
-                    res_df$fhist == "roller-coaster" & is.na(res_df$HCRmult) &
-                    res_df$uncertainty == "observation_error" &
-                    is.na(res_df$upper_constraint), ]
+select_rc <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
+                      res_df$fhist == "roller-coaster" & is.na(res_df$HCRmult) &
+                      res_df$uncertainty == "observation_error" &
+                      is.na(res_df$upper_constraint), ]
 stk_lst_rc <- lapply(select_rc$scenario, function(x){
   readRDS(paste0("output/perfect_knowledge/combined/", x, ".rds"))
 })
@@ -1893,22 +1909,22 @@ ssb_list_rc$ssb <- as.data.frame(lapply(stk_lst2_rc, ssb))$data
 ### add identifier whether stock has been used for further exploration
 ssb_list_rc$used <- FALSE
 ssb_list_rc$used[ssb_list_rc$qname %in% c("pol-nsea", "nep-2829", "tur-nsea",
-                                    "whg-7e-k")] <- TRUE
+                                          "whg-7e-k")] <- TRUE
 
 ### reshape
-ssb_list_rc_res <- melt(data = ssb_list_rc, 
-                  id.vars = c("year", "qname", "group", "used"),
-                  measure.vars = c("ssb", "catch", "rec", "fbar"))
+ssb_list_rc_res <- melt(data = ssb_list_rc,
+                        id.vars = c("year", "qname", "group", "used"),
+                        measure.vars = c("ssb", "catch", "rec", "fbar"))
 ### plot ssb
 p <- ggplot(ssb_list_rc_res[!ssb_list_rc$qname %in% c("her-nis", "san-ns4") &
-                               ssb_list_rc_res$variable == "ssb", ],
-             aes(x = year, y = value, colour = group, group = qname)) +
-    geom_line(size = 1) +
-    theme_bw() +
-    facet_wrap(~variable, scales = "free_y") +
-    geom_vline(xintercept = 100) +
-    #scale_linetype_manual(values = c("TRUE" = 6, "FALSE" = 1)) + 
-    labs(y = "")
+                              ssb_list_rc_res$variable == "ssb", ],
+            aes(x = year, y = value, colour = group, group = qname)) +
+  geom_line(size = 1) +
+  theme_bw() +
+  facet_wrap(~variable, scales = "free_y") +
+  geom_vline(xintercept = 100) +
+  #scale_linetype_manual(values = c("TRUE" = 6, "FALSE" = 1)) +
+  labs(y = "")
 ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "groups_ssb_roller-coaster.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
@@ -1916,21 +1932,21 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 ### plot all quants
 (p <- ggplot(ssb_list_rc_res[!ssb_list_rc$qname %in% c("her-nis", "san-ns4"), ],
              aes(x = year, y = value, colour = group, group = qname)) +
-  geom_line(size = 2) +
-  theme_bw() +
-  facet_wrap(~variable, scales = "free_y") )
+    geom_line(size = 2) +
+    theme_bw() +
+    facet_wrap(~variable, scales = "free_y") )
 ### plot fbar
 (pfbar <- ggplot(ssb_list_rc_res[!ssb_list_rc$qname %in% c("her-nis", "san-ns4") &
-                         ssb_list_rc_res$variable == "fbar", ],
-       aes(x = year, y = value, colour = group, group = qname)) +
-  geom_line(size = 2) +
-  theme_bw() +
-  facet_wrap(~variable, scales = "free_y"))
+                                   ssb_list_rc_res$variable == "fbar", ],
+                 aes(x = year, y = value, colour = group, group = qname)) +
+    geom_line(size = 2) +
+    theme_bw() +
+    facet_wrap(~variable, scales = "free_y"))
 pfbar + ylim(0, 0.5)
- 
+
 
 p2 <- ggplot(ssb_list_rc[!ssb_list_rc$qname %in% c("her-nis", "san-ns4"), ],
-            aes(x = year, y = ssb, colour = group, group = qname)) +
+             aes(x = year, y = ssb, colour = group, group = qname)) +
   geom_line(size = 2) +
   theme_bw()
 p2
@@ -1939,7 +1955,7 @@ p2
 library(FLife)
 data(wklife)
 wklife$sex <- as.character(wklife$sex)
-wklife$sex[15] <- "M"; wklife$a[15] <- 0.00028; wklife$b[15] <- 3.229; 
+wklife$sex[15] <- "M"; wklife$a[15] <- 0.00028; wklife$b[15] <- 3.229;
 wklife$linf[15] <- 70; wklife$l50[15] <- 28.4; wklife$k[15] <- 0.2
 wklife$group <- NA
 wklife$group[wklife$stock %in% g1] <- paste(g1, collapse = "_")
@@ -1980,17 +1996,17 @@ wklife2$group <- as.factor(wklife2$group)
 levels(wklife2$group) <- 1:length(levels(wklife2$group))
 wklife2 <- wklife2[order(wklife2$group), c("name", "common", "area", "stock",
                                            "a", "b", "linf", "l50", "a50",
-                                           "t0", "k", "amax", "M_mat", 
+                                           "t0", "k", "amax", "M_mat",
                                            "MK_mat", "l50linf", "group")]
 write.csv(x = wklife2, file = paste0("output/perfect_knowledge/plots/3.2.1",
                                      "/subgroup/lh.csv"), row.names = FALSE)
 
 
 #stk_list
-wklife_df <- melt(data = wklife, 
-                id.vars = c("stock", "group"),
-                measure.vars = c("amax", "linf", "l50linf", "l50", 
-                                 "k", "MK_mat"))
+wklife_df <- melt(data = wklife,
+                  id.vars = c("stock", "group"),
+                  measure.vars = c("amax", "linf", "l50linf", "l50",
+                                   "k", "MK_mat"))
 ggplot(data = wklife_df,
        aes(x = value, y = 1, fill = group, colour = group, shape = group)) +
   #geom_bar(stat = "identity") +
@@ -2031,20 +2047,20 @@ stocks <- c(2,6,11,15)
 
 ### multiplier
 df_plot <- res_df[res_df$catch_rule == "3.2.1" &
-                    res_df$stk_pos2 %in% c(2,6,11,15) & 
+                    res_df$stk_pos2 %in% c(2,6,11,15) &
                     res_df$uncertainty == "observation_error" &
                     res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
                     is.na(res_df$upper_constraint) &
                     is.na(res_df$b_w), ]
 df_plot$HCRmult[is.na(df_plot$HCRmult)] <- 1
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "HCRmult"),
-                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
 levels(df_plot$variable) <- c("p(SSB < Blim)", "iteration collapse risk", "relative yield")
 
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = HCRmult, y = value, colour = stock)) +
   geom_line() + geom_point() +
   theme_bw() +
@@ -2059,20 +2075,20 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 
 ### z
 df_plot <- res_df[res_df$catch_rule == "3.2.1" &
-                    res_df$stk_pos2 %in% c(2,6,11,15) & 
+                    res_df$stk_pos2 %in% c(2,6,11,15) &
                     res_df$uncertainty == "observation_error" &
-                    grepl(x = res_df$options, 
+                    grepl(x = res_df$options,
                           pattern = "b_z") &
                     is.na(res_df$upper_constraint) &
                     is.na(res_df$HCRmult), ]
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "b_z"),
-                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
 levels(df_plot$variable) <- c("p(SSB < Blim)", "iteration collapse risk", "relative yield")
 
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = b_z, y = value, colour = stock)) +
   geom_line() + geom_point() +
   theme_bw() +
@@ -2091,7 +2107,7 @@ names(df_plot2)[length(df_plot2)] <- "value_sum"
 df_plot <- merge(df_plot, df_plot2, all = TRUE)
 df_plot$value_rel <- with(df_plot, value/value_sum)
 ### plot relative values
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = b_z, y = value_rel, colour = stock)) +
   geom_line() + geom_point() +
   theme_bw() +
@@ -2110,7 +2126,7 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 
 ### TAC constraint (upper)
 df_plot <- res_df[res_df$catch_rule == "3.2.1" &
-                    res_df$stk_pos2 %in% c(2,6,11,15) & 
+                    res_df$stk_pos2 %in% c(2,6,11,15) &
                     res_df$uncertainty == "observation_error" &
                     res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
                     is.na(res_df$b_z) &
@@ -2121,22 +2137,22 @@ df_add <- df_plot[df_plot$upper_constraint == 3.05, ]
 df_add$ssb_below_blim_total <- df_add$collapse_iter <- df_add$rel_yield <- NA
 df_add$upper_constraint <- 3.025
 df_plot <- rbind(df_plot, df_add)
- 
+
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "upper_constraint"),
                 measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
 levels(df_plot$variable) <- c("p(SSB < Blim)", "iteration collapse risk", "relative yield")
 
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = upper_constraint, y = value, colour = stock,
                 shape = upper_constraint > 3)) +
   geom_line() + geom_point() +
   theme_bw() +
   ylim(0, NA) +
   facet_grid(variable ~ fhist, scale = "free") +
-  xlab("upper constraint") + ylab("risk") + 
+  xlab("upper constraint") + ylab("risk") +
   xlim(1, NA) +
   scale_shape_discrete("", labels = c("constraint", "without\nconstraint"))
 p
@@ -2153,14 +2169,14 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 df_plot <- res_df[c(913:1032), ]
 
 ### reshape
-df_plot2 <- melt(data = df_plot, 
-                id.vars = c("scenario", "stock", "lower_constraint", 
-                            "upper_constraint", "fhist"),
-                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
-                                 "rel_yield"))
+df_plot2 <- melt(data = df_plot,
+                 id.vars = c("scenario", "stock", "lower_constraint",
+                             "upper_constraint", "fhist"),
+                 measure.vars = c("ssb_below_blim_total", "collapse_iter",
+                                  "rel_yield"))
 levels(df_plot2$variable) <- c("p(SSB < Blim)", "iteration collapse", "relative yield")
 
-p <- ggplot(data = df_plot2, 
+p <- ggplot(data = df_plot2,
             aes(x = lower_constraint, y = upper_constraint)) +
   scale_fill_gradient("value", limits = c(0,1),
                       low = "green", high = "red") +
@@ -2174,16 +2190,16 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_limits_combs_grid.png"), plot = p,
        width = 25, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### line plots
-p <- ggplot(data = df_plot2, 
-             aes(x = lower_constraint, y = value, linetype = fhist, 
-                 colour = as.factor(upper_constraint),
-                 shape = fhist)) +
-  geom_line() + geom_point() + 
+p <- ggplot(data = df_plot2,
+            aes(x = lower_constraint, y = value, linetype = fhist,
+                colour = as.factor(upper_constraint),
+                shape = fhist)) +
+  geom_line() + geom_point() +
   labs(x = "lower limit") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
   scale_color_discrete("upper limit") +
-  scale_shape_discrete("fishing\nhistory") + 
+  scale_shape_discrete("fishing\nhistory") +
   scale_linetype_discrete("fishing\nhistory") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 p
@@ -2191,10 +2207,10 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_limits_combs.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### one-way only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ], 
-            aes(x = lower_constraint, y = value, 
+p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ],
+            aes(x = lower_constraint, y = value,
                 colour = as.factor(upper_constraint))) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "lower limit") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
@@ -2205,10 +2221,10 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_limits_combs_one-way.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### roller-coaster only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ], 
-            aes(x = lower_constraint, y = value, 
+p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ],
+            aes(x = lower_constraint, y = value,
                 colour = as.factor(upper_constraint))) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "lower limit") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
@@ -2219,16 +2235,16 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_limits_combs_roller-coaster.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### same, but inverted
-p <- ggplot(data = df_plot2, 
-            aes(x = upper_constraint, y = value, linetype = fhist, 
+p <- ggplot(data = df_plot2,
+            aes(x = upper_constraint, y = value, linetype = fhist,
                 colour = as.factor(lower_constraint),
                 shape = fhist)) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "upper limit") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
   scale_color_discrete("lower limit") +
-  scale_shape_discrete("fishing\nhistory") + 
+  scale_shape_discrete("fishing\nhistory") +
   scale_linetype_discrete("fishing\nhistory") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 p
@@ -2236,10 +2252,10 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_limits_combs2.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### one-way only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ], 
+p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ],
             aes(x = upper_constraint, y = value,
                 colour = as.factor(lower_constraint))) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "upper limit") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
@@ -2250,10 +2266,10 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_limits_combs2_one_way.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### roller-coaster only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ], 
+p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ],
             aes(x = upper_constraint, y = value,
                 colour = as.factor(lower_constraint))) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "upper limit") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
@@ -2273,14 +2289,14 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 df_plot <- res_df[res_df$scenario %in% c(1033:1152), ]
 
 ### reshape
-df_plot2 <- melt(data = df_plot, 
-                 id.vars = c("scenario", "stock", "HCRmult", 
+df_plot2 <- melt(data = df_plot,
+                 id.vars = c("scenario", "stock", "HCRmult",
                              "b_z", "fhist"),
-                 measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                 measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                   "rel_yield"))
 levels(df_plot2$variable) <- c("p(SSB < Blim)", "iteration collapse", "relative yield")
 
-p <- ggplot(data = df_plot2, 
+p <- ggplot(data = df_plot2,
             aes(x = HCRmult, y = b_z)) +
   scale_fill_gradient("value", limits = c(0,1),
                       low = "green", high = "red") +
@@ -2294,16 +2310,16 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_mult_b_combs_grid.png"), plot = p,
        width = 25, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 ### line plot
-p <- ggplot(data = df_plot2, 
-            aes(x = HCRmult, y = value, linetype = fhist, 
+p <- ggplot(data = df_plot2,
+            aes(x = HCRmult, y = value, linetype = fhist,
                 colour = as.factor(b_z),
                 shape = fhist)) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "advice multiplier") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
   scale_color_discrete("b exponent") +
-  scale_shape_discrete("fishing\nhistory") + 
+  scale_shape_discrete("fishing\nhistory") +
   scale_linetype_discrete("fishing\nhistory") +
   scale_x_continuous(breaks = c(.8, 0.9, 1))
 p
@@ -2311,9 +2327,9 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_mult_z_combs.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### for one-way only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ], 
+p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ],
             aes(x = HCRmult, y = value, colour = as.factor(b_z))) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "advice multiplier") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
@@ -2324,9 +2340,9 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_mult_z_combs_one-way.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### for roller-coaster only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ], 
+p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ],
             aes(x = HCRmult, y = value, colour = as.factor(b_z))) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "advice multiplier") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
@@ -2337,16 +2353,16 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_mult_z_combs_roller-coaster.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### same, but inverted
-p <- ggplot(data = df_plot2, 
-            aes(x = b_z, y = value, linetype = fhist, 
+p <- ggplot(data = df_plot2,
+            aes(x = b_z, y = value, linetype = fhist,
                 colour = as.factor(HCRmult),
                 shape = fhist)) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "b exponent") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
   scale_color_discrete("advice multiplier") +
-  scale_shape_discrete("fishing\nhistory") + 
+  scale_shape_discrete("fishing\nhistory") +
   scale_linetype_discrete("fishing\nhistory") +
   scale_x_continuous(breaks = 1:3)
 p
@@ -2354,9 +2370,9 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_mult_z_combs2.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### for one-way only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ], 
+p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ],
             aes(x = b_z, y = value, colour = as.factor(HCRmult))) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "b exponent") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
@@ -2367,9 +2383,9 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_mult_z_combs2_one-way.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### for roller-coaster only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ], 
+p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ],
             aes(x = b_z, y = value, colour = as.factor(HCRmult))) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "b exponent") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
@@ -2383,13 +2399,13 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 ### same plots, but with standardised values
 ### add relative values
 ### multiplier
-df_plot_x <- aggregate(value ~ stock + fhist + variable + HCRmult, 
+df_plot_x <- aggregate(value ~ stock + fhist + variable + HCRmult,
                        data = df_plot2, FUN = max)
 names(df_plot_x)[length(df_plot_x)] <- "value_max_HCRmult"
 df_plot <- merge(df_plot_x, df_plot2, all = TRUE)
 df_plot$value_rel_HCRmult <- with(df_plot, value/value_max_HCRmult)
 ### exponent z
-df_plot_z <- aggregate(value ~ stock + fhist + variable + b_z, 
+df_plot_z <- aggregate(value ~ stock + fhist + variable + b_z,
                        data = df_plot2, FUN = max)
 names(df_plot_z)[length(df_plot_z)] <- "value_max_b_z"
 df_plot <- merge(df_plot_z, df_plot, all = TRUE)
@@ -2398,16 +2414,16 @@ df_plot$value_rel_b_z <- with(df_plot, value/value_max_b_z)
 df_plot$value_rel_HCRmult[is.na(df_plot$value_rel_HCRmult)] <- 1
 
 ### multiplier on x-axis
-p <- ggplot(data = df_plot, 
-            aes(x = HCRmult, y = value_rel_b_z, linetype = fhist, 
+p <- ggplot(data = df_plot,
+            aes(x = HCRmult, y = value_rel_b_z, linetype = fhist,
                 colour = as.factor(b_z),
                 shape = fhist)) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "advice multiplier") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
   scale_color_discrete("b exponent") +
-  scale_shape_discrete("fishing\nhistory") + 
+  scale_shape_discrete("fishing\nhistory") +
   scale_linetype_discrete("fishing\nhistory") +
   scale_x_continuous(breaks = c(.8, 0.9, 1)) +
   ylab("standardised values")
@@ -2416,16 +2432,16 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
                          "risks_mult_z_combs_rel.png"), plot = p,
        width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
 ### exponent on x-axis
-p <- ggplot(data = df_plot, 
-            aes(x = b_z, y = value_rel_HCRmult, linetype = fhist, 
+p <- ggplot(data = df_plot,
+            aes(x = b_z, y = value_rel_HCRmult, linetype = fhist,
                 colour = as.factor(HCRmult),
                 shape = fhist)) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point() +
   labs(x = "b exponent") +
   facet_grid(variable ~ stock, scales = "free") +
   theme_bw() +
   scale_color_discrete("advice multiplier") +
-  scale_shape_discrete("fishing\nhistory") + 
+  scale_shape_discrete("fishing\nhistory") +
   scale_linetype_discrete("fishing\nhistory") +
   scale_x_continuous(breaks = 1:3) +
   ylab("standardised values")
@@ -2437,7 +2453,7 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
 ### ------------------------------------------------------------------------ ###
 ### plot default ra fa ba & noise ssb and catch
 ### ------------------------------------------------------------------------ ###
-res_plot <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" & 
+res_plot <- res_df[res_df$options == "option_f:a option_r:a option_b:a MK:1.5" &
                      res_df$fhist == "one-way" &
                      is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ]
 
@@ -2461,10 +2477,10 @@ p <- ggplot(data = res_stks[res_stks$year >= -1, ],
             aes(x = year, y = data, colour = stock)) +
   geom_line(show.legend = FALSE) +
   facet_wrap(~ qname, scales = "free", nrow = 1) +
-  ylab("") + 
+  ylab("") +
   theme_bw()
 p
-ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/default.png"), 
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/default.png"),
        plot = p,
        width = 10, height = 4, units = "cm", dpi = 300, type = "cairo-png")
 
@@ -2496,24 +2512,24 @@ df_plot <- res_df[res_df$catch_rule == "3.2.1" &
                     is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ]
 
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "options", "stk_pos"),
-                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
-levels(df_plot$variable) <- c("p(SSB<Blim)", 
+levels(df_plot$variable) <- c("p(SSB<Blim)",
                               ("iter collapse"), "rel. yield")
 ### set stock group
 df_plot$group[df_plot$stk_pos <= 30] <- "wklife"
 df_plot$group[is.na(df_plot$group)] <- "new"
 
 ### plot
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity", position = "dodge", show.legend = FALSE) +
-  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) + 
+  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) +
   facet_grid(variable + fhist ~ group, scale = "free_x") +
   theme_bw() +
-  ylim(0, NA) + 
+  ylim(0, NA) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 p
 ggsave(filename = paste0("output/perfect_knowledge/plots/more/",
@@ -2522,30 +2538,30 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/more/",
 
 ### risk plots: 3.2.2 obs error all stocks ####
 ### ------------------------------------------------------------------------ ###
-### 
-df_plot <- subset(res_df, catch_rule == "3.2.2" & 
+###
+df_plot <- subset(res_df, catch_rule == "3.2.2" &
                     uncertainty == "observation_error" &
                     is.na(HCRmult) & is.na(w))
 
 ### reshape
-df_plot <- melt(data = df_plot, 
+df_plot <- melt(data = df_plot,
                 id.vars = c("scenario", "stock", "fhist", "options", "stk_pos"),
-                measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                  "rel_yield"))
-levels(df_plot$variable) <- c("p(SSB<Blim)", 
+levels(df_plot$variable) <- c("p(SSB<Blim)",
                               ("iter collapse"), "rel. yield")
 ### set stock group
 df_plot$group[df_plot$stk_pos <= 30] <- "wklife"
 df_plot$group[is.na(df_plot$group)] <- "new"
 
 ### plot
-p <- ggplot(data = df_plot, 
+p <- ggplot(data = df_plot,
             aes(x = stock, y = value,  fill = stock)) +
   geom_bar(stat = "identity", position = "dodge", show.legend = FALSE) +
-  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) + 
+  geom_text(aes(label = round(value, 2), y = value + 0.05), position = "dodge", size = 2) +
   facet_grid(variable + fhist ~ group, scale = "free_x") +
   theme_bw() +
-  ylim(0, NA) + 
+  ylim(0, NA) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 p
 ggsave(filename = paste0("output/perfect_knowledge/plots/more/",
@@ -2559,14 +2575,14 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/more/",
 
 # ### show all files in trial_runs folder
 # files <- list.files("trial_runs/")
-# 
+#
 # ### keep only RData files with number in front
 # files <- files[grepl(pattern = "[0-9]{1,}.RData", x = files)]
-# 
+#
 # ### sort according to number
 # files <- files[order(an(gsub(pattern = "[^0-9]", replacement = "", x = files)))]
-# 
-# 
+#
+#
 # ### load files
 # stks <- lapply(files, function(x){
 #   (function(){
@@ -2574,28 +2590,28 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/more/",
 #     return(stk)
 #   })()
 # })
-# 
+#
 # ### coerce into FLStocks
 # stks <- FLStocks(stks)
-# 
+#
 # ### correct names
 # names(stks)[1:12] <- paste0("lemon_sole_oneway_", names(stks)[1:12])
-# names(stks)[13:length(stks)] <- paste0("lemon_sole_rollercoaster_", 
+# names(stks)[13:length(stks)] <- paste0("lemon_sole_rollercoaster_",
 #                                        names(stks)[13:length(stks)])
-# 
-# 
+#
+#
 # plot(stks) + theme(legend.position = "bottom")
 # plot(stks[c(6,12+6)]) + theme(legend.position = "bottom")
-# 
+#
 # ### check if catch matches targeted catch
 # which(catch(stks[[1]])[,ac(101:200)] / (attr(stks[[1]], "tracking")["IEM",ac(100:199)]) > 1.001)
 # ### catch in year 107, iterations 1:6
-# 
+#
 # ### example
 # catch(stks[[1]])[,ac(101:109),,,,1]
 # attr(stks[[1]], "tracking")["IEM",ac(100:108),,,,1]
 # plot(stks[[1]][,ac(100:110),,,,1:6]) + geom_vline(xintercept = 107, colour = "red")
-# 
+#
 
 
 #stk210 <- readRDS(paste0("output/perfect_knowledge/combined/", 204, ".rds"))
@@ -2606,121 +2622,1059 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/more/",
 
 
 
+
+
+### ------------------------------------------------------------------------ ###
+### "correct" SSB and catch ####
+### ------------------------------------------------------------------------ ###
+
+library(FLCore)
+### set up parallel computing environment
+library(doParallel)
+cl <- makeCluster(28)
+registerDoParallel(cl)
+
+### find available scenarios
+files <- list.files("/gpfs/afmcefas/simonf/output/combined/")
+### sort by scenarios
+scenarios <- lapply(files, function(x) {
+  tmp <- strsplit(x = x, split = "\\.")
+  return(as.numeric(tmp[[1]][1]))
+})
+scenarios <- sort(unlist(scenarios))
+
+### once SSB down, stay down ...
+### load scenario 6803
+# stk <- readRDS("D:/WKLIFEVII/github/wklifeVII/R/output/perfect_knowledge/combined/6803.rds")
+
+### loop through all scenarios
+res <- foreach(scenario = scenarios, .packages = "FLCore") %dopar% {
+  
+  ### load results
+  stk_tmp <- readRDS(paste0("/gpfs/afmcefas/simonf/output/combined/",
+                            scenario, ".rds"))
+  
+  ### find first F=5 for each iteration
+  ### return numeric year or NA if F not maxed
+  fmax <- apply(fbar(stk_tmp), 6, FUN = function(x){
+    #browser()
+    as.numeric(dimnames(x)$year[min(which(x >= 4.999999999))])
+  })
+  
+  ### extract SSB and catch
+  SSB_old <- SSB <- ssb(stk_tmp)
+  catch_old <- catch <- catch(stk_tmp)
+  ### assume collapse/extinction if SSB drops below 1 (0.1% of B0)
+  for(i in which(is.finite(fmax))) {
+    ### years to check
+    years <- NA
+    years <- seq(from = min(fmax[,,,,, i]+1, 200),
+                 to = dims(SSB)$maxyear)
+    ### find first year with SSB < 1
+    min_year <- years[min(which(SSB[, ac(years),,,, i] < 1))]
+    ### years to correct
+    if (length(min_year) > 0) {
+      if (!is.na(min_year)) {
+        years_chg <- years[years >= min_year]
+        
+        ### change SSB
+        SSB[, ac(years_chg),,,, i] <- 0
+        ### and catch
+        catch[, ac(years_chg),,,, i] <- 0
+      }
+    }
+  }
+  
+  ### return SSB and catch
+  ### both versions
+  return(list(ssb = SSB, catch = catch, ssb_old = SSB_old,
+              catch_old = catch_old))
+  
+}
+### name scenarios
+names(res) <- res_df[!is.na(res_df$ssb_below_blim_total), "scenario"]
+
+### save
+saveRDS(object = res, "output/quants_1_6804.rds")
+
+stopCluster(cl)
+
+### ------------------------------------------------------------------------ ###
+### calculate statistics with new quants ####
+### ------------------------------------------------------------------------ ###
+
+cl <- makeCluster(28)
+registerDoParallel(cl)
+
+### define Blim
+B_lim <- 162.79
+
+### load quants
+res <- readRDS("output/quants_1_6804.rds")
+
+#res <- res[5001:length(res)]
+
+stats <- foreach(scenario = res, .packages = "FLCore",
+                 .export = "B_lim") %dopar% {
+                   
+                   ### list for storing results
+                   res_temp <- list()
+                   ### number of iterations for current scenario
+                   n_iter <- dim(scenario[[1]])[6]
+                   
+                   ### proportion where SSB was below B_lim
+                   res_temp$ssb_below_blim_total_old <-
+                     sum(scenario$ssb_old[, ac(101:200)] < B_lim) / (n_iter*100)
+                   ### proportion of iterations where SSB dropped below B_lim
+                   res_temp$ssb_below_blim_iter_old <-
+                     sum(yearSums(scenario$ssb_old[, ac(101:200)] < B_lim) > 0) / n_iter
+                   
+                   ### stock collapse = ssb < 1
+                   res_temp$collapse_total_old <-
+                     sum(scenario$ssb_old[, ac(100:200)] < 1) / (n_iter*100)
+                   ### proportion of iterations with collapse
+                   res_temp$collapse_iter_old <-
+                     sum(yearSums(scenario$ssb_old[, ac(101:200)] < 1) > 0) / n_iter
+                   
+                   # ### how frequently is max F reached?
+                   # res_temp$fmaxed_total <- sum(fbar(stk_tmp)[, ac(101:200)] == 5) / (n_iter*100)
+                   # ### in how many iterations did this happen?
+                   # res_temp$fmaxed_iter <- sum(yearSums(fbar(stk_tmp)[, ac(101:200)] == 5) > 0)/
+                   #   n_iter
+                   
+                   ### yield
+                   res_temp$yield_old <- mean(scenario$catch_old[,ac(101:200)])
+                   res_temp$rel_yield_old <- mean(scenario$catch_old[,ac(101:200)]) /
+                     mean(scenario$catch_old[,ac(75:100)])
+                   
+                   ### same but for "corrected" quants
+                   ### proportion where SSB was below B_lim
+                   res_temp$ssb_below_blim_total <-
+                     sum(scenario$ssb[, ac(101:200)] < B_lim) / (n_iter*100)
+                   ### proportion of iterations where SSB dropped below B_lim
+                   res_temp$ssb_below_blim_iter <-
+                     sum(yearSums(scenario$ssb[, ac(101:200)] < B_lim) > 0) / n_iter
+                   
+                   ### stock collapse = ssb < 1
+                   res_temp$collapse_total <-
+                     sum(scenario$ssb[, ac(100:200)] < 1) / (n_iter*100)
+                   ### proportion of iterations with collapse
+                   res_temp$collapse_iter <-
+                     sum(yearSums(scenario$ssb[, ac(101:200)] < 1) > 0) / n_iter
+                   
+                   ### yield
+                   res_temp$yield <- mean(scenario$catch[,ac(101:200)])
+                   res_temp$rel_yield <- median(apply(scenario$catch[, ac(101:200)], 6, mean) /
+                                                  apply(scenario$catch[, ac(75:100)], 6, mean))
+                   
+                   ### scenario definition
+                   #res_temp$scenario <- names(res)[i]
+                   
+                   return(as.data.frame(res_temp))
+                   
+                 }
+
+
+stats <- do.call(rbind, stats)
+stats$scenario <- scenarios
+
+### save
+saveRDS(stats, file = "output/stats_new.RDS")
+
+### combine results with scenario definitions
+source("MP_scenarios.R")
+
+### merge
+res_df <- merge(stats, scn_df, all = TRUE)
+### sort
+res_df <- res_df[order(res_df$scenario), ]
+
+### save
+saveRDS(res_df, file = "output/stats_scn_new.RDS")
+res_df <- readRDS("output/stats_scn_new.RDS")
+
+stopCluster(cl)
+
 ### ------------------------------------------------------------------------ ###
 ### 3.2.1 all stocks - constraints ####
 ### ------------------------------------------------------------------------ ###
 
+library(reshape)
+
 ### load scenario results
-df_plot <- res_df[res_df$scenario %in% 1237:2164, ]
+df_plot <- res_df[res_df$scenario %in% 1237:4484, ]
 
 ### reshape
-df_plot2 <- melt(data = df_plot, 
-                 id.vars = c("scenario", "stock", "lower_constraint", 
+df_plot2 <- melt(data = df_plot,
+                 id.vars = c("scenario", "stock", "lower_constraint",
                              "upper_constraint", "fhist"),
-                 measure.vars = c("ssb_below_blim_total", "collapse_iter", 
+                 measure.vars = c("ssb_below_blim_total", "collapse_iter",
                                   "rel_yield"))
-levels(df_plot2$variable) <- c("p(SSB < Blim)", "iteration collapse", "relative yield")
+# levels(df_plot2$variable) <- c("p(SSB < Blim)", "iteration collapse",
+#                                "relative yield")
+levels(df_plot2$variable) <- c("p(SSB<B[lim])",
+                               ("p(iter~collapse)"), "rel.~yield")
 
-p <- ggplot(data = df_plot2[df_plot2$stock == unique(df_plot2$stock)[1],], 
-            aes(x = lower_constraint, y = upper_constraint)) +
-  scale_fill_gradient("value", limits = c(0,1),
-                      low = "green", high = "red") +
-  labs(x = "lower limit", y = "upper limit") +
-  facet_grid(fhist+variable ~ stock) +
-  geom_raster(aes(fill = value)) +
-  geom_text(aes(label = round(value, 2))) +
+### modify for line plots
+df_lower <- df_plot2
+df_tmp <- df_lower[df_lower$lower_constraint == 0, ]
+df_tmp$lower_constraint <- 0.49
+df_tmp$value <- NA
+df_lower$lower_constraint[df_lower$lower_constraint == 0] <- 0.48
+df_lower <- rbind(df_lower, df_tmp)
+df_lower$x_lower <- "limit"
+df_lower$x_lower[df_lower$lower_constraint == 0.48] <- "no limit"
+
+df_upper <- df_plot2
+df_tmp <- df_upper[df_upper$upper_constraint == Inf, ]
+df_tmp$upper_constraint <- 1.51
+df_tmp$value <- NA
+df_upper$upper_constraint[df_upper$upper_constraint == Inf] <- 1.52
+df_upper <- rbind(df_upper, df_tmp)
+df_upper$x_upper <- "limit"
+df_upper$x_upper[df_upper$upper_constraint == 1.52] <- "no limit"
+
+### loop through stocks
+. <- foreach(stock = unique(df_plot2$stock), .packages = "ggplot2",
+             .export = c("df_lower", "df_upper")) %dopar% {
+               
+               ### line plots - lower limit
+               p <- ggplot(data = df_lower[df_lower$stock == stock, ],
+                           aes(x = lower_constraint, y = value,
+                               colour = as.factor(upper_constraint),
+                               shape = x_lower)) +
+                 geom_line() + geom_point() +
+                 labs(x = "lower limit") +
+                 facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+                 theme_bw() +
+                 scale_color_discrete("upper limit") +
+                 scale_shape_discrete("lower limit") +
+                 theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+               p
+               ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/constraints/",
+                                        stock, "_lower_limit.png"), plot = p,
+                      width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+               
+               ### line plots - upper limit
+               p <- ggplot(data = df_upper[df_upper$stock == stock, ],
+                           aes(x = upper_constraint, y = value,
+                               colour = as.factor(lower_constraint),
+                               shape = x_upper)) +
+                 geom_line() + geom_point() +
+                 labs(x = "upper limit") +
+                 facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+                 theme_bw() +
+                 scale_color_discrete("lower limit", guide = guide_legend(order = 1)) +
+                 scale_shape_discrete("upper limit", guide = guide_legend(order = 2)) +
+                 theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+               p
+               ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/constraints/",
+                                        stock, "_upper_limit.png"), plot = p,
+                      width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+               
+             }
+
+### line plots - all stocks, lower limit only
+p <- ggplot(data = df_lower[df_lower$upper_constraint == Inf, ],
+            aes(x = lower_constraint, y = value,
+                colour = as.factor(stock),
+                shape = x_lower)) +
+  geom_line() + geom_point() +
+  labs(x = "lower limit") +
+  facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+  theme_bw() +
+  scale_color_discrete("stock") +
+  scale_shape_discrete("lower limit") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/constraints/",
+                         "all_lower_limit.png"), plot = p,
+       width = 30, height = 20, units = "cm", dpi = 300, type = "cairo-png")
+
+### line plots - all stocks, upper limit only
+p <- ggplot(data = df_upper[df_upper$lower_constraint == 0, ],
+            aes(x = upper_constraint, y = value,
+                colour = as.factor(stock),
+                shape = x_upper)) +
+  geom_line() + geom_point() +
+  labs(x = "upper limit") +
+  facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+  theme_bw() +
+  scale_color_discrete("stock") +
+  scale_shape_discrete("upper limit") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/constraints/",
+                         "all_upper_limit.png"), plot = p,
+       width = 30, height = 20, units = "cm", dpi = 300, type = "cairo-png")
+
+
+### look at values...
+upper <- spread(data = df_plot2[df_plot2$lower_constraint == 0, -1],
+                upper_constraint, value, drop = TRUE)
+upper$check <- with(upper, `Inf` / `1.1`)
+upper[, c("stock", "fhist", "variable", "check")]
+
+# blubb1 <- df_plot2[df_plot2$upper_constraint %in% c(Inf, 1.5) &
+#            df_plot2$lower_constraint == 0 & df_plot2$stock == "her-nis", ]
+# spread(blubb1, upper_constraint, value, -scenario)
+### ------------------------------------------------------------------------ ###
+### 3.2.1 all stocks - multiplier & exponent ####
+### ------------------------------------------------------------------------ ###
+
+library(reshape)
+
+### load scenario results
+df_plot <- res_df[res_df$scenario %in% 4485:6804, ]
+
+### reshape
+df_plot2 <- gather(data = df_plot, key = "variable", value = "value",
+                   ssb_below_blim_total, collapse_iter, rel_yield,
+                   factor_key = TRUE)
+levels(df_plot2$variable) <- c("p(SSB<B[lim])",
+                               ("p(iter~collapse)"), "rel.~yield")
+
+### values relative to value at HCRmult 1
+df_merge <- df_plot2[df_plot2$HCRmult == 1,
+                     c("stock", "fhist", "variable", "value", "b_z")]
+names(df_merge)[names(df_merge) == "value"] <- "value_1"
+### merge
+df_merged <- merge(df_plot2, df_merge)
+### calculate relative values
+df_merged$value_rel <- with(df_merged, value / value_1)
+### Infs
+df_merged[df_merged$value_rel == Inf & df_merged$variable == "p(iter~collapse)" &
+            !is.na(df_merged$value_rel), ]
+### rel values at multiplier 0.5
+risk0.5 <- subset(df_merged, variable == "p(iter~collapse)" & HCRmult == 0.5 & b_z == 1, c("stock", "fhist", "value_rel"))
+summary(risk0.5)
+summary(risk0.5[risk0.5$fhist == "one-way", ])
+summary(risk0.5[risk0.5$fhist == "roller-coaster", ])
+
+### calculate values relative to max
+df_plot3 <- df_plot2 %>% group_by(stock, fhist, variable, b_z) %>%
+  summarise(value_max = max(value, na.rm = TRUE)) %>%
+  left_join(df_plot2) %>%
+  mutate(value_rel = value / value_max)
+
+
+
+### loop through stocks
+. <- foreach(stock = unique(df_plot2$stock), .packages = "ggplot2") %dopar% {
+  browser()
+  ### line plots - multiplier
+  p <- ggplot(data = df_plot2[df_plot2$stock == stock, ],
+              aes(x = HCRmult, y = value,
+                  colour = as.factor(b_z))) +
+    geom_line() + geom_point() +
+    labs(x = "multiplier") +
+    facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+    theme_bw() +
+    scale_color_discrete("exponent b") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+  p
+  ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                           "multiplier_exponent/", stock, "_multiplier.png"),
+         plot = p, width = 15, height = 10, units = "cm", dpi = 300,
+         type = "cairo-png")
+  
+  ### line plots - exponent
+  p <- ggplot(data = df_plot2[df_plot2$stock == stock, ],
+              aes(x = b_z, y = value,
+                  colour = as.factor(HCRmult))) +
+    geom_line() + geom_point() +
+    labs(x = "exponent") +
+    facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+    theme_bw() +
+    scale_color_discrete("multiplier") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+  p
+  ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                           "multiplier_exponent/", stock, "_exponent.png"),
+         plot = p, width = 15, height = 10, units = "cm", dpi = 300,
+         type = "cairo-png")
+  
+  ### grid
+  p <- ggplot(data = df_plot2[df_plot2$stock == stock, ],
+              aes(y = HCRmult, x = b_z)) +
+    scale_fill_gradient("value", limits = c(0, 1),
+                        low = "green", high = "red") +
+    labs(y = "advice multiplier", x = "exponent b") +
+    facet_grid(variable ~ fhist, labeller = "label_parsed") +
+    geom_raster(aes(fill = value)) +
+    geom_text(aes(label = round(value, 2)), size = 2) +
+    theme_bw()
+  p
+  ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                           "multiplier_exponent/", stock, "_grid.png"),
+         plot = p, width = 15, height = 10, units = "cm", dpi = 300,
+         type = "cairo-png")
+  
+}
+
+### line plots - all stocks - multiplier
+p <- ggplot(data = df_plot2[df_plot2$b_z == 1, ],
+            aes(x = HCRmult, y = value,
+                colour = as.factor(stock))) +
+  geom_line() + geom_point() +
+  labs(x = "multiplier") +
+  facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+  theme_bw() +
+  scale_color_discrete("stock") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "multiplier_exponent/all_multiplier.png"),
+       plot = p, width = 30, height = 20, units = "cm", dpi = 300,
+       type = "cairo-png")
+
+### line plots - all stocks - exponent
+p <- ggplot(data = df_plot2[df_plot2$HCRmult == 1, ],
+            aes(x = b_z, y = value,
+                colour = as.factor(stock))) +
+  geom_line() + geom_point() +
+  labs(x = "exponent z") +
+  facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+  theme_bw() +
+  scale_color_discrete("stock") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "multiplier_exponent/all_exponent.png"),
+       plot = p, width = 30, height = 20, units = "cm", dpi = 300,
+       type = "cairo-png")
+
+### line plots - all stocks - multiplier - relative
+p <- ggplot(data = df_plot3[df_plot3$b_z == 1, ],
+            aes(x = HCRmult, y = value_rel,
+                colour = as.factor(stock))) +
+  geom_line() + geom_point() +
+  labs(x = "multiplier") +
+  facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+  theme_bw() +
+  scale_color_discrete("stock") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(y = "relative value")
+p
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "multiplier_exponent/all_multiplier_rel.png"),
+       plot = p, width = 30, height = 20, units = "cm", dpi = 300,
+       type = "cairo-png")
+p2 <- ggplot(data = blubb[blubb$b_z == 1, ],
+             aes(x = HCRmult, y = value_rel,
+                 colour = as.factor(stock))) +
+  geom_line() + geom_point() +
+  labs(x = "multiplier") +
+  facet_grid(variable ~ fhist, scales = "free", labeller = "label_parsed") +
+  theme_bw() +
+  scale_color_discrete("stock") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(y = "relative value")
+p2
+
+
+
+
+### look at values: multiplier ...
+HCRmult <- spread(data = df_plot2[df_plot2$b_z == 1, -1:-10],
+                  HCRmult, value, drop = TRUE)
+upper$check <- with(upper, `Inf` / `1.1`)
+upper[, c("stock", "fhist", "variable", "check")]
+
+blubb1 <- df_plot2[df_plot2$upper_constraint %in% c(Inf, 1.5) &
+                     df_plot2$lower_constraint == 0 & df_plot2$stock == "her-nis", ]
+spread(blubb1, upper_constraint, value, -scenario)
+
+
+
+### plot 3.2.1 default
+4485:6804
+res[1:4484] <- NA
+
+res_df2 <- res_df[4485:6804, ]
+res_df2 <- res_df2[res_df2$HCRmult == 1 & res_df2$b_z == 1, ]
+
+quant_lst <- res[res_df2$scenario]
+quant_lst <- lapply(quant_lst, function(x){
+  x[[1]]
+})
+ssbs <- FLQuants(quant_lst)
+names(ssbs) <- res_df2$stock
+plot(ssbs[c(1:22, 24:29)])
+
+
+
+### ------------------------------------------------------------------------ ###
+### 3.2.1 correlate with life-history ####
+### ------------------------------------------------------------------------ ###
+library(tidyverse)
+
+### load stats
+res_df <- readRDS("output/stats_scn_new.RDS")
+
+### subset to default settings
+res_df2 <- res_df[res_df$scenario %in% 4485:6804, ]
+res_df2 <- res_df2[res_df2$HCRmult == 1 & res_df2$b_z == 1, ]
+### 58 lines, 29 stocks & 2 fishing histories
+
+### load lhist
+lhist <- read.csv("input/stock_list_full2.csv", header = TRUE)
+# lhist <- lhist[, c("stock", "a", "b", "lmax", "linf", "l50", "a50", "t0",
+#                    "k", "M", "M_mat", "MK")]
+#lhist <- read.csv("output/perfect_knowledge/plots/3.2.1/subgroup/lh.csv")
+
+### load more life-history parameters
+### find stock positions
+stocks <- unique(res_df[res_df$fhist == "one-way", ][, c("stock", "stk_pos")])
+### loop through all stocks
+lhist_lst <- lapply(stocks$stk_pos, function(stock) {
+  ### load data
+  load(paste0("input/stocks/perfect_knowledge/", stock, ".RData"))
+  ### extract lhist
+  lhist_tmp <- attr(stk, "lhpar")[, 1]
+  ### create data frame with values
+  tmp <- c(lhist_tmp)
+  names(tmp) <- dimnames(lhist_tmp)$params
+  if (stock == 12) {tmp <- c(tmp[1:16], l50=NA, tmp[17:18])}
+  return(tmp)
+})
+lhist_lst <- as.data.frame(do.call(rbind, lhist_lst))
+lhist_lst$stock <- stocks$stock
+
+lhist_full <- merge(lhist[, c("stock", "M_mat", "MK")],
+                    lhist_lst[, c("L_inf", "K", "t0", "a", "b", "a50", "l50",
+                                  "M", "max_age", "stock")], by.x = "stock",
+                    by.y = "stock")
+
+### merge with stats
+res_df2 <- merge(res_df2, lhist_full)
+
+### reshape
+res_df3 <- gather(data = res_df2, key = variable, value = value,
+                  c("ssb_below_blim_total", "collapse_iter", "rel_yield"))
+### sort variables
+res_df3$variable <- as.factor(res_df3$variable)
+res_df3$variable <- factor(res_df3$variable, levels(res_df3$variable)[c(3,1,2)])
+
+### plot risks
+ggplot(data = res_df3, aes(x = stock, y = value, fill = stock)) +
+  theme_bw() +
+  facet_grid(variable ~ fhist, scales = "free_y") +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.25))
+
+### plot correlations
+ggplot(data = res_df3, aes(x = max_age, y = value, colour = stock)) +
+  theme_bw() +
+  facet_grid(variable ~ fhist, scales = "free_y") +
+  #geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.25))
+
+### plot risk ~ risk
+ggplot(data = res_df2, aes(x = ssb_below_blim_total, y = collapse_iter,
+                           colour = stock)) +
+  geom_point() +
+  theme_bw() +
+  facet_wrap(~ fhist) +
+  stat_smooth(method = "lm", colour = "black", se = FALSE, fill = "grey90") +
+  geom_abline(intercept = 0, slope = 1)
+
+### plot risk ~ yield
+ggplot(data = res_df2, aes(x = ssb_below_blim_total, y = rel_yield,
+                           colour = stock)) +
+  geom_point() +
+  theme_bw() +
+  facet_wrap(~ fhist) +
+  stat_smooth(method = "lm", colour = "black", se = TRUE, fill = "grey90")
+
+
+### ------------------------------------------------------------------------ ###
+### 3.2.1 try grouping ####
+### ------------------------------------------------------------------------ ###
+
+### load quants
+# res <- readRDS("output/quants_1_6804.rds")
+
+### stats
+res_df <- readRDS("output/stats_scn_new.RDS")
+
+### find default scenarios
+scenarios <- res_df[res_df$scenario %in% 4485:6804 &
+                      res_df$HCRmult == 1 & res_df$b_z == 1, "scenario"]
+
+### extract and save default 3.2.1 runs for all stocks/fhist
+# quants <- res[ac(scenarios)]
+# saveRDS(quants, file = "output/quants_3.2.1_default.rds")
+quants <- readRDS("output/quants_3.2.1_default.rds")
+
+### coerce into data frames, extract median for each scenario
+quants_df <- lapply(scenarios, function(x) {
+  df_tmp <- lapply(names(quants[[ac(x)]]), function(y){
+    cbind(as.data.frame(apply(quants[[ac(x)]][[y]], 2, median)), quant = y)
+  })
+  df_tmp <- do.call(rbind, df_tmp)
+  df_tmp <- cbind(df_tmp, res_df[res_df$scenario == x, ])
+  df_tmp
+})
+quants_df <- do.call(rbind, quants_df)
+
+ggplot(data = quants_df, aes(x = year, y = data, colour = stock)) +
+  facet_grid(quant ~ fhist) +
+  geom_line() +
   theme_bw()
-p
-ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
-                         "risks_limits_combs_grid.png"), plot = p,
-       width = 25, height = 15, units = "cm", dpi = 300, type = "cairo-png")
-### line plots
-p <- ggplot(data = df_plot2[df_plot2$stock == unique(df_plot2$stock)[1],], 
-            aes(x = lower_constraint, y = value, linetype = fhist, 
-                colour = as.factor(upper_constraint),
-                shape = fhist)) +
-  geom_line() + geom_point() + 
-  labs(x = "lower limit") +
-  facet_grid(variable ~ stock, scales = "free") +
+
+### plot for all stocks
+for (i in 1:29) {
+  p <- ggplot(data = quants_df[quants_df$stk_pos2 == i, ],
+              aes(x = year, y = data, colour = stock)) +
+    facet_grid(quant ~ fhist) +
+    geom_line() +
+    theme_bw()
+  print(p)
+  a <- readline()
+}
+
+### ------------------------------------------------------------------------ ###
+### compare MSY length reference points
+### ------------------------------------------------------------------------ ###
+cl <- makeCluster(4)
+registerDoParallel(cl)
+
+### unique stocks
+stocks <- unique(res_df[, c("stk_pos", "stock")])
+
+### load functions for calculating Lc
+source("functions/fFun.R")
+
+### loop through all stocks
+pars <- foreach(stock = stocks$stk_pos, .packages = "FLCore") %dopar% {
+  
+  ### load results
+  load(paste0("input/stocks/perfect_knowledge/", stock, ".RData"))
+  ### calculate Lc
+  L_c <- median(calc_Lc(attr(stk, "catch_len")[,ac(100)]))
+  ### life history data
+  lhpar <- apply(stk@lhpar, 1, median)
+  ### add l50, if missing
+  if (!"l50" %in% dimnames(lhpar)$params) {
+    lhpar <- rbind2(lhpar[1:16], FLPar(l50 = NA), lhpar[17:18])
+  }
+  ### reference points
+  refpts <- apply(stk@refpts, 1, median)
+  ### calculate mature M
+  M_mat <- weighted.mean(x = c(m(stk)[,1,,,, 1]), c(mat(stk)[,1,,,, 1]))
+  ### M/K
+  MK <- M_mat / c(lhpar["K"])
+  ### bind everything together
+  tmp <- rbind2(lhpar, refpts, FLPar(L_c = L_c, M_mat = M_mat, MK = MK))
+  ### return as data frame
+  tmp <- t(data.frame(tmp))
+  row.names(tmp) <- NULL
+  return(tmp)
+  
+}
+pars <- as.data.frame(do.call(rbind, pars))
+pars$stk_pos <- 1:nrow(pars)
+
+### merge with stock details
+pars <- merge(pars,
+              unique(res_df[, c("stk_pos", "stk_pos2", "stock", "fhist")]))
+### keep only one row per stock
+pars <- pars[match(unique(pars$stock), pars$stock), ]
+
+
+### calculate LFeM with M/K = 1.5
+pars$LFeMK <- with(pars, (L_inf + 2 * 1.5 * L_c) / (1 + 2 * 1.5))
+
+### save
+saveRDS(object = pars, "input/all_stocks_repfts_lhpar.rds")
+
+stopCluster(cl)
+
+### plotting
+plot(pars$LFeMK ~ pars$LFeFmsy)
+
+pars_df <- gather(data = pars, key = "method", value = "length",
+                  c("LFeFmsy", "LFeMK", "LFeM"))
+ggplot(data = pars_df, aes(x = stock, y = length, fill = method)) +
+  geom_bar(stat = "identity", position = "dodge") +
   theme_bw() +
-  scale_color_discrete("upper limit") +
-  scale_shape_discrete("fishing\nhistory") + 
-  scale_linetype_discrete("fishing\nhistory") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-p
-ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
-                         "risks_limits_combs.png"), plot = p,
-       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
-### one-way only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ], 
-            aes(x = lower_constraint, y = value, 
-                colour = as.factor(upper_constraint))) +
-  geom_line() + geom_point() + 
-  labs(x = "lower limit") +
-  facet_grid(variable ~ stock, scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+### correlate with risks
+### subset to default settings
+res_df2 <- res_df[res_df$scenario %in% 4485:6804 &
+                    res_df$HCRmult == 1 & res_df$b_z == 1, ]
+### merge with reference values
+res_df3 <- merge(res_df2, pars, by = "stock", all = TRUE)
+### absolute deviation
+ggplot(data = res_df3,
+       aes(x = ssb_below_blim_total,
+           y = LFeFmsy - LFeMK)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ fhist.x) +
   theme_bw() +
-  scale_color_discrete("upper limit\none-way") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-p
-ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
-                         "risks_limits_combs_one-way.png"), plot = p,
-       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
-### roller-coaster only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ], 
-            aes(x = lower_constraint, y = value, 
-                colour = as.factor(upper_constraint))) +
-  geom_line() + geom_point() + 
-  labs(x = "lower limit") +
-  facet_grid(variable ~ stock, scales = "free") +
+  labs(x = "p(SSB<Blim)")
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "correlations/risk_dev_length_ref_absolute.png"),
+       width = 20, height = 15, units = "cm", dpi = 300,
+       type = "cairo-png")
+### relative deviation
+ggplot(data = res_df3,
+       aes(x = ssb_below_blim_total,
+           y = (LFeFmsy - LFeMK) / LFeFmsy)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ fhist.x) +
   theme_bw() +
-  scale_color_discrete("upper limit\nroller-coaster") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-p
-ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
-                         "risks_limits_combs_roller-coaster.png"), plot = p,
-       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
-### same, but inverted
-p <- ggplot(data = df_plot2, 
-            aes(x = upper_constraint, y = value, linetype = fhist, 
-                colour = as.factor(lower_constraint),
-                shape = fhist)) +
-  geom_line() + geom_point() + 
-  labs(x = "upper limit") +
-  facet_grid(variable ~ stock, scales = "free") +
+  labs(x = "p(SSB<Blim)")
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "correlations/risk_dev_length_ref_rel.png"),
+       width = 20, height = 15, units = "cm", dpi = 300,
+       type = "cairo-png")
+### absolute values of relative deviation
+ggplot(data = res_df3,
+       aes(x = ssb_below_blim_total,
+           y = abs((LFeFmsy - LFeMK) / LFeFmsy))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ fhist.x) +
   theme_bw() +
-  scale_color_discrete("lower limit") +
-  scale_shape_discrete("fishing\nhistory") + 
-  scale_linetype_discrete("fishing\nhistory") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-p
-ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
-                         "risks_limits_combs2.png"), plot = p,
-       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
-### one-way only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "one-way", ], 
-            aes(x = upper_constraint, y = value,
-                colour = as.factor(lower_constraint))) +
-  geom_line() + geom_point() + 
-  labs(x = "upper limit") +
-  facet_grid(variable ~ stock, scales = "free") +
+  labs(x = "p(SSB<Blim)")
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "correlations/risk_dev_length_ref_absrel.png"),
+       width = 20, height = 15, units = "cm", dpi = 300,
+       type = "cairo-png")
+
+### ------------------------------------------------------------------------ ###
+### 3.2.1 correlate stats with lhpars
+### ------------------------------------------------------------------------ ###
+
+### select required columns
+df_cor <- res_df3[, c(1, 9, 12, 14, 17, 30:32, 46:48, 51:54, 57:59, 62)]
+### reshape
+df_cor <- gather(df_cor, key = "par", value = "par_value",
+                 L_inf:LFeMK)
+df_cor <- gather(df_cor, key = "stat", value = "stat_value",
+                 ssb_below_blim_total:rel_yield)
+### plot correlations
+ggplot(data = df_cor, aes(x = par_value, y = stat_value)) +
+  geom_point() +
+  facet_grid(stat + fhist.x ~ par, scales = "free") +
   theme_bw() +
-  scale_color_discrete("lower limit\none-way") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-p
-ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
-                         "risks_limits_combs2_one_way.png"), plot = p,
-       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
-### roller-coaster only
-p <- ggplot(data = df_plot2[df_plot2$fhist == "roller-coaster", ], 
-            aes(x = upper_constraint, y = value,
-                colour = as.factor(lower_constraint))) +
-  geom_line() + geom_point() + 
-  labs(x = "upper limit") +
-  facet_grid(variable ~ stock, scales = "free") +
+  geom_smooth(method = "lm") +
+  ylim(0, 1) +
+  labs(x = "parameter value", y = "stats value")
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "correlations/correlations.png"),
+       width = 29.7, height = 21, units = "cm", dpi = 200,
+       type = "cairo-png")
+
+
+### ------------------------------------------------------------------------ ###
+### 3.2.1 default - try to understand behaviour ####
+### ------------------------------------------------------------------------ ###
+
+### load stocks and stats
+res_df <- readRDS("output/stats_scn_new.RDS") ### quants
+quants <- readRDS("output/quants_3.2.1_default.rds") ### stats
+### stocks
+stocks <- foreach(stock = 6515:6572) %dopar% {
+  # readRDS(paste0("D:/WKLIFEVII/github/wklifeVII/R/output/perfect_knowledge",
+  #                "/combined/", stock, ".rds"))
+  readRDS(paste0("C:/Users/SF02/OneDrive - CEFAS/WKLIFEVII/github/wklifeVII/",
+                 "R/output/perfect_knowledge/combined/", stock, ".rds"))
+}
+names(stocks) <- 6515:6572
+
+stocks_desc <- res_df[6515:6572, c("scenario", "stock", "fhist")]
+### Zeus faber 6551
+
+plot(stocks[["6554"]])
+plot(stocks[["6551"]])
+plot(quants[["6551"]]$ssb)
+
+### correlate SSB at beginning of simulation vs. risk
+SSB_status <- foreach(stock = stocks, .packages = "FLCore") %dopar% {
+  c(iterMedians(ssb(stock)[, ac(100)]))
+}
+res_df$SSB_status <- NA
+res_df$SSB_status[res_df$scenario %in% 6515:6572] <- unlist(SSB_status)
+
+ggplot(data = res_df, aes(x = SSB_status, y = collapse_iter)) +
+  geom_point() +
+  facet_wrap(~ fhist)
+plot(head(unlist(SSB_status), 15) ~
+       head(res_df$ssb_below_blim_total[res_df$scenario %in% 6515:6572], 15))
+### no correlation whatsoever...
+
+
+stock <- stocks[["6551"]]
+plot(stocks[["6551"]]@tracking[c("HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),,,,, 1]) +
+  geom_hline(yintercept = 1)# + ylim(0, 2)
+plot(stocks[["6516"]]@tracking[c("HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),,,,, 1]) + geom_hline(yintercept = 1)
+
+HCR3.2.1r <- foreach(stock = stocks, .packages = "FLCore") %dopar% {
+  c(iterMedians(stock@tracking["HCR3.2.1r", ac(99)]))
+}
+HCR3.2.1f <- foreach(stock = stocks, .packages = "FLCore") %dopar% {
+  c(iterMedians(stock@tracking["HCR3.2.1f", ac(99)]))
+}
+HCR3.2.1b <- foreach(stock = stocks, .packages = "FLCore") %dopar% {
+  c(iterMedians(stock@tracking["HCR3.2.1b", ac(99)]))
+}
+HCR3.2.1fvar <- foreach(stock = stocks, .packages = "FLCore") %dopar% {
+  #iterMedians(apply(stock@tracking["HCR3.2.1f"], 6, var, na.rm = TRUE))
+  iterMedians(apply(abs(stock@tracking["HCR3.2.1f"] - 1), 6, median, na.rm = TRUE))
+}
+
+### create df with stats ...
+df_default <- res_df[res_df$scenario %in% 6515:6572, ]
+df_default$SSB_stats <- unlist(SSB_status)
+df_default$HCR3.2.1r <- unlist(HCR3.2.1r)
+df_default$HCR3.2.1f <- unlist(HCR3.2.1f)
+df_default$HCR3.2.1b <- unlist(HCR3.2.1b)
+df_default$HCR3.2.1fvar <- unlist(HCR3.2.1fvar)
+
+df_def_plot <- gather(df_default, key = "stats", value = "value",
+                      SSB_stats:HCR3.2.1fvar)
+ggplot(df_def_plot, aes(x = value, y = ssb_below_blim_total)) +
+  geom_point() +
   theme_bw() +
-  scale_color_discrete("lower limit\nroller-coaster") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-p
-ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/subgroup/",
-                         "risks_limits_combs2_roller-coaster.png"), plot = p,
-       width = 15, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+  facet_grid(fhist ~ stats, scale = "free")
+
+stock <- 6551
+plot_trial <- function(stock, yrs, iters){
+  track <- FLQuants(HCR_r = stock@tracking[c("HCR3.2.1r")],
+                    HCR_f = stock@tracking[c("HCR3.2.1f")],
+                    HCR_b = stock@tracking[c("HCR3.2.1b")])
+  track <- lapply(track, function(x) {
+    names(dimnames(x))[1] <- "age"
+    dimnames(x)[1] <- "all"
+    x
+  })
+  qts <- FLQuants(Rec = rec(stock),
+                  SSB = ssb(stock),
+                  catch = catch(stock),
+                  fbar = fbar(stock),
+                  HCR_r = track$HCR_r,
+                  HCR_f = track$HCR_f,
+                  HCR_b = track$HCR_b)
+  qts_plot <- FLCore::iter(window(qts, start = head(yrs, 1),
+                                  end = tail(yrs, 1)),
+                           iters)
+  plot(qts_plot) + theme_bw() +
+    geom_hline(data = data.frame(yintercept = 1,
+                                 qname = c("HCR_r", "HCR_f", "HCR_b")),
+               aes(yintercept = yintercept),
+               linetype = "dashed", colour = "grey")
+}
+plot_trial(stocks[["6551"]], yrs = 99:200, iters = 1)
+
+### loop through stocks & quants
+cor_stats <- foreach(stock = stocks, quant = quants,
+                     .packages = "FLCore", .combine = rbind) %dopar% {
+  
+  ### extract values of r, f & b from HCR
+  vals <- lapply(c(r = "r", f = "f", b = "b"), function(x) {
+   stock@tracking[paste0("HCR3.2.1", x)]
+  })
+  # fr <- stock@tracking[c("HCR3.2.1r"), ,,,, ]
+  # ff <- stock@tracking[c("HCR3.2.1f"), ,,,, ]
+  # fb <- stock@tracking[c("HCR3.2.1b"), ,,,, ]
+  
+  ### contribution to total deviation from 1
+  vals_1 <- lapply(vals, function(x) abs(x - 1)) ### difference from 1
+  vals_sum <- vals_1$r + vals_1$f + vals_1$b ### sum of differences
+  contr <- lapply(vals_1, function(x) x/vals_sum) ### contribution
+  # cr <- abs(fr-1)/(abs(fr-1) + abs(ff-1) + abs(fb-1))
+  # cf <- abs(ff-1)/(abs(fr-1) + abs(ff-1) + abs(fb-1))
+  # cb <- abs(fb-1)/(abs(fr-1) + abs(ff-1) + abs(fb-1))
+  
+  ### remove years after collapse
+  ### (defined as SSB<1 after hitting F=5)
+  ### replace with NAs
+  contr <- lapply(contr, function(x){
+   x@.Data[quant$ssb@.Data == 0] <- NA
+   return(x)
+  })
+  # cr@.Data[quant$ssb@.Data == 0] <- NA
+  # cf@.Data[quant$ssb@.Data == 0] <- NA
+  # cb@.Data[quant$ssb@.Data == 0] <- NA
+  
+  ### mean contribution per iter over all years
+  contr_mean <- lapply(contr, yearMeans)
+  ### median over iterations
+  contr_median <- lapply(contr_mean, iterMedians)
+  
+  return(unlist(contr_median))
+  
+}
+
+### add results to stats
+stats_HCR <- res_df[res_df$scenario %in% 6515:6572, ]
+stats_HCR <- cbind(stats_HCR, cor_stats)
+
+### plot contribution split by component for all stocks
+df_plot <- gather(data = stats_HCR, key = "component", value = "value",
+                  r, f, b)
+ggplot(df_plot, aes(x = stock, y = value, fill = component)) +
+  geom_bar(stat = "identity", position = "fill") +
+  facet_wrap(~ fhist) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.2)) +
+  labs(y = "contribution of components to catch advice")
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "correlations/catch_rule_contributions.png"),
+       width = 20, height = 12, units = "cm", dpi = 300, type = "cairo-png")
+
+### correlation between components and risk
+ggplot(df_plot, aes(x = value, y = ssb_below_blim_total)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_grid(fhist ~ component) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.2)) +
+  labs(x = "contribution of components to catch advice", y = "p(SSB<Blim)")
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "correlations/catch_rule_contributions_correlations.png"),
+       width = 20, height = 12, units = "cm", dpi = 300, type = "cairo-png")
+
+### check correlation
+df_cors <- group_by(df_plot, fhist, component) %>% 
+  summarise(r = cor.test(x = value, y = ssb_below_blim_total)$estimate,
+            p = cor.test(x = value, y = ssb_below_blim_total)$p.value)
+### plot again, with correlation test resuts
+ggplot(df_plot, aes(x = value, y = ssb_below_blim_total)) +
+  geom_point() +
+  geom_text(data = df_cors, x = 0.45, y = 0.85,
+            #aes(label = paste0("r=", signif(r, 2), "\np=", signif(p, 2)))) +
+            # aes(label = paste0("italic(rho)==", signif(r, 2))), parse = TRUE) +
+            aes(label = paste0("atop(italic(rho)==", signif(r, 2), 
+                               ",italic(p)==", signif(p, 2),")")), parse = TRUE) + 
+  facet_grid(fhist ~ component) +
+  theme_bw() +
+  # xlab(expression("p(SSB<B [lim] )"))
+  labs(x = "contribution of components to catch advice",
+       y = expression(italic(p)(SSB<B[lim])))
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/correlations/",
+                         "catch_rule_contributions_correlations_stats.png"),
+       width = 20, height = 12, units = "cm", dpi = 300, type = "cairo-png")
+
+### ------------------------------------------------------------------------ ###
+### 3.2.1 default - recreate full corrected time series
+### ------------------------------------------------------------------------ ###
+
+`%FLQuant+FLPar%` <- function(e1, e2) {
+  res <- e1
+  for (yr in dimnames(e1)$year) res[, yr] <- res[, yr] + e2
+  res
+}
+`%FLPar+FLQuant%` <- function(e1, e2) {
+  res <- e2
+  for (yr in dimnames(e2)$year) res[, yr] <- res[, yr] + e1
+  res
+}
+`%//%` <- function(e1, e2) {
+  res <- e1
+  for (yr in dimnames(e1)$year) res[, yr] <- res[, yr] / e2
+  res
+}
+
+
+res <- foreach(scenario = 6515:6516, .packages = "FLCore",
+               .errorhandling = "pass") %dopar% {
+  
+  ### load data
+  # stock <- readRDS(paste0("output/perfect_knowledge/combined/", scenario, 
+  #                         ".rds"))
+  stock <- readRDS(paste0("output/combined/", scenario, 
+                          ".rds"))
+
+  ### calculate component f for historical period
+  tracking <- stock@tracking
+  L_FM <- tracking["L_c"]
+  ### calculate f
+  L_FM <- (stock@lhpar["L_inf"] %FLPar+FLQuant% (2 * 1.5 * tracking["L_c"])) /
+    (1 + 2 * 1.5)
+  fac_f <- tracking["L_mean"] / L_FM
+  ### insert into tracking
+  tracking["HCR3.2.1f", ac(75:98)] <- fac_f[, ac(75:98)]
+  
+  ### find first F=5 for each iteration
+  ### return numeric year or NA if F not maxed
+  fmax <- apply(fbar(stock), 6, FUN = function(x){
+    #browser()
+    as.numeric(dimnames(x)$year[min(which(x >= 4.999999999))])
+  })
+  
+  ### extract quantities to change
+  stock.n <- stock.n(stock)
+  catch.n <- catch.n(stock)
+  harvest <- harvest(stock)
+  ssb <- ssb(stock)
+  rec <- rec(stock)
+  fbar <- fbar(stock)
+  catch <- catch(stock)
+  #tracking <- stock@tracking
+  
+  ### assume collapse/extinction if SSB drops below 1 (0.1% of B0)
+  for (i in which(is.finite(fmax))) {
+    ### years to check
+    years <- NA
+    years <- seq(from = min(fmax[,,,,, i] + 1, 200),
+                 to = dims(ssb(stock))$maxyear)
+    ### find first year with SSB < 1
+    min_year <- years[min(which(ssb(stock)[, ac(years),,,, i] < 1))]
+    ### years to correct
+    if (length(min_year) > 0) {
+      if (!is.na(min_year)) {
+        years_chg <- years[years >= min_year]
+        
+        ### change stock.n, catch.n and fishing mortality
+        # stock.n[, ac(years_chg),,,, i] <- 0
+        # catch.n[, ac(years_chg),,,, i] <- 0
+        ### assume NA fishing mortality, as stock and catch both zero
+        # harvest[, ac(years_chg),,,, i] <- NA
+        ### tracking, set NAs after stock collapse
+        tracking[, ac(years_chg),,,, i] <- NA
+        ### derived quants
+        ssb[, ac(years_chg),,,, i] <- 0
+        catch[, ac(years_chg),,,, i] <- 0
+        rec[, ac(years_chg),,,, i] <- 0
+        fbar[, ac(years_chg),,,, i] <- 0 ### assume zero fishing after collapse
+      }
+    }
+  }
+  #browser()
+  
+  # ### insert "corrected" values
+  # stock.n(stock) <- stock.n
+  # catch.n(stock) <- catch.n
+  # harvest(stock) <- harvest
+  # 
+  # ### update summary slots
+  # stock(stock) <- computeStock(stock)
+  # catch(stock) <- computeCatch(stock)
+  
+  ### extract/return usefull series
+  res <- FLQuants(SSB = ssb, fbar = fbar, Catch = catch, Rec = rec, 
+                  HCR3.2.1r = tracking["HCR3.2.1r"],
+                  HCR3.2.1f = tracking["HCR3.2.1f"],
+                  HCR3.2.1b = tracking["HCR3.2.1b"],
+                  Lmean = tracking["L_mean"])
+  res <- lapply(res, function(x) {
+    dimnames(x)[1] <- "all"
+    names(dimnames(x))[1] <- "quant"
+    return(x)
+  })
+  
+  ### save 
+  # saveRDS(res, file = paste0("output/perfect_knowledge/combined/3.2.1_quants/",
+  #                            scenario, ".rds"))
+  saveRDS(res, file = paste0("output/combined/3.2.1_quants/",
+                             scenario, ".rds"))
+
+}
