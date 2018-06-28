@@ -138,7 +138,7 @@ stocks_lh$maxfbar <- c(3,6,15,23,5,3,4,5,2,5,4,5,9,8,4,13,11,11,15,13,3,3,5,5,
 ### create FLBRP objects from life-history data
 brps <- foreach(i = split(stocks_lh, 1:nrow(stocks_lh)),
                 .errorhandling = "pass", 
-                .packages = c("FLife", "FLasher", "FLBRP")) %dopar% {
+                .packages = c("FLife", "FLBRP")) %dopar% {
   
   ### create brp
   ### get lh params
@@ -164,6 +164,10 @@ brps <- foreach(i = split(stocks_lh, 1:nrow(stocks_lh)),
   return(brp)
 
 }
+names(brps) <- stocks_lh$stock
+
+### save brps
+saveRDS(brps, file = "input/brps.rds")
 
 ### calculate M
 stocks_lh$M <- unlist(lapply(brps, function(x){
@@ -210,18 +214,18 @@ OMs <- foreach(i = brps, .errorhandling = "pass",
   stk <- propagate(stk, its)
   
   ### create FLSR object
-  stk_sr <- FLSR(params=params(i), model = model(i))
+  stk_sr <- FLSR(params = params(i), model = model(i))
   
   ### create residuals for (historical) projection
   set.seed(0)
   residuals <- rlnoise(its, rec(stk) %=% 0, sd = 0.2, b = 0.3)
   
   ### project forward, targeting 0.5 F_MSY
-  years_target <- ((dims(stk)$minyear+1):75)
+  years_target <- ((dims(stk)$minyear + 1):75)
   stk <- fwd(stk, sr = stk_sr, 
-             control=fwdControl(year = years_target, 
-                                value = refpts(i)['msy', 'harvest']*0.5, 
-                                quant = "f"),
+             control = fwdControl(year = years_target, 
+                                  value = refpts(i)['msy', 'harvest']*0.5, 
+                                  quant = "f"),
              residuals = residuals[, ac(years_target)])
   
   ### project last 25 years with 2 scenarios: one-way & roller-coaster
