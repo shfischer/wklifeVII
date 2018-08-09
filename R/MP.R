@@ -8,7 +8,7 @@
 ### ------------------------------------------------------------------------ ###
 ### created 08/2017
 ### last modifications:
-### 2017-10 Simon Fischer
+### 2018 Simon Fischer
 ### ------------------------------------------------------------------------ ###
 
 ### ------------------------------------------------------------------------ ###
@@ -17,11 +17,11 @@
 ### load arguments
 args <- commandArgs(TRUE)
 ### extract them
-for (i in 1:length(args)) eval(parse(text=args[[i]]))
+for (i in 1:length(args)) eval(parse(text = args[[i]]))
 
 ### set default values
 ### number of cores, i.e. processes to spawn
-if (!isTRUE(exists("n_cores"))){ 
+if (!isTRUE(exists("n_cores"))) { 
   stop("n_cores need to be passed to R!")
 } else {
   n_cores <- n_cores - 1 ### slaves, exluding master
@@ -31,7 +31,7 @@ if (!isTRUE(exists("cluster_type"))) cluster_type <- 2
 ### split each scenario into n parts?
 if (!isTRUE(exists("n_parts"))) n_parts <- 1
 ### scenarios to be simulated
-if (!isTRUE(exists("scn_start")) | !isTRUE(exists("scn_end"))){
+if (!isTRUE(exists("scn_start")) | !isTRUE(exists("scn_end"))) {
   scns <- TRUE
 } else {
   scns <- scn_start:scn_end
@@ -61,7 +61,7 @@ if (cluster_type == 1) {
 }
 
 ### ------------------------------------------------------------------------ ###
-### libraries ####
+### packages ####
 ### ------------------------------------------------------------------------ ###
 required_pckgs <- c("FLash", "FLAssess", "FLXSA", "ggplotFL",
                     "FLBRP", "data.table", "spict")
@@ -119,7 +119,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
   if (n_parts > 1) {
     
     ### check if splitting feasible
-    if (it%%n_parts != 0) stop("'it' cannot be split into 'n_parts'!")
+    if (it %% n_parts != 0) stop("'it' cannot be split into 'n_parts'!")
     ### get desired iterations
     it_part <- split(1:it, cut(1:it, n_parts))[[part]]
     it <- it/n_parts
@@ -145,7 +145,8 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
   ### create object for tracking ####
   ### ---------------------------------------------------------------------- ###
   tracking <- FLQuant(NA,
-    dimnames = list(metric = c("Fperc", "convergence", "advice", "Implementation",
+    dimnames = list(metric = c("Fperc", "convergence", "advice", 
+                               "Implementation",
                                "IEM", "FleetDyn","OM.f", "OM.ssb", "OM.catch",
                                "HCR3.2.1c", "HCR3.2.1r", "HCR3.2.1f",
                                "HCR3.2.1b", "HCRmult", "L_c", "L_mean",
@@ -161,17 +162,16 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
   ### ---------------------------------------------------------------------- ###
   ### loop through simulation years ####
   ### ---------------------------------------------------------------------- ###
-  for(i in vy[-length(vy)]){
+  for (ay in an(vy[-length(vy)])) {
     
     gc()
-    ay <- an(i)
-    cat(i, "> ")
-    vy0 <- 1:(ay-y0) # data years (positions vector) - one less than current year
-    sqy <- ac((ay-1):(ay-nsqy)) # years for status quo computations
+    cat(ay, "> ")
+    vy0 <- 1:(ay - y0) # data years (positions vector) - one less than current year
+    sqy <- ac((ay - 1):(ay - nsqy)) # years for status quo computations
     
-    tracking["OM.f", ac(ay-1)] <- fbar(stk)[,ac(ay-1)]
-    tracking["OM.ssb", ac(ay-1)] <- ssb(stk)[,ac(ay-1)]
-    tracking["OM.catch", ac(ay-1)] <- catch(stk)[,ac(ay-1)]
+    tracking["OM.f", ac(ay - 1)] <- fbar(stk)[,ac(ay - 1)]
+    tracking["OM.ssb", ac(ay - 1)] <- ssb(stk)[,ac(ay - 1)]
+    tracking["OM.catch", ac(ay - 1)] <- catch(stk)[,ac(ay - 1)]
     #tracking["advice", ac(ay-2)] <- catch(stk)[,ac(ay-1)]
     
     ### -------------------------------------------------------------------- ###
@@ -186,7 +186,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ctrl.oem$vy0 <- vy0
     ctrl.oem$ay <- ay
     ctrl.oem$tracking <- tracking
-    if (!is.null(ctrl.mp$ctrl.oem)){
+    if (!is.null(ctrl.mp$ctrl.oem)) {
       o.out <- do.call("o", ctrl.oem)
     } else {
       ctrl.oem$method <- 'perfectInfo.wrapper'
@@ -204,7 +204,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### -------------------------------------------------------------------- ###
     ### Assessment/Estimator of stock statistics
     ### function f()
-    if (!is.null(ctrl.mp$ctrl.f)){
+    if (!is.null(ctrl.mp$ctrl.f)) {
       ctrl.f <- ctrl.mp$ctrl.f
       ctrl.f$stk <- stk0
       ctrl.f$idx <- idx0
@@ -213,20 +213,20 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       stk0 <- out.assess$stk
       tracking <- out.assess$tracking
     }
-    tracking["Fperc",ac(ay)] <- fdy <- fbar(stk0)[,ac(ay-1)]
+    tracking["Fperc",ac(ay)] <- fdy <- fbar(stk0)[,ac(ay - 1)]
     
     
     ### -------------------------------------------------------------------- ###
     ### HCR parametrization
     ### function x()
-    if (!is.null(ctrl.mp$ctrl.x)){
+    if (!is.null(ctrl.mp$ctrl.x)) {
       ctrl.x <- ctrl.mp$ctrl.x
       ctrl.x$stk <- stk0
       ctrl.x$idx <- idx0
       ctrl.x$ay <- ay
       ctrl.x$iy <- iy
       ctrl.x$tracking <- tracking
-      if(exists("hcrpars")) ctrl.x$hcrpars <- hcrpars
+      if (exists("hcrpars")) ctrl.x$hcrpars <- hcrpars
       out <- do.call("x", ctrl.x)
       hcrpars <- out$hcrpars
       tracking <- out$tracking
@@ -235,27 +235,26 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### -------------------------------------------------------------------- ###
     ### HCR
     ### function h()
-    if (!is.null(ctrl.mp$ctrl.h)){
+    if (!is.null(ctrl.mp$ctrl.h)) {
       ctrl.h <- ctrl.mp$ctrl.h
       ctrl.h$stk <- stk0
       ctrl.h$ay <- ay
       ctrl.h$tracking <- tracking
-      # If hcrpars was constructed by x() above, insert relevant parts into ctrl.h
-      if(exists("hcrpars")){
+      if (exists("hcrpars")) {
         ctrl.h$hcrpars <- hcrpars
         hcrparnames <- names(hcrpars[names(hcrpars) %in% names(ctrl.h)])
         ctrl.h[hcrparnames] <- hcrpars[hcrparnames]
       }
       ctrl <- do.call("h", ctrl.h)
     } else {
-      ctrl <- getCtrl(yearMeans(fbar(stk0)[,sqy]), "f", ay+1, it)
+      ctrl <- getCtrl(yearMeans(fbar(stk0)[,sqy]), "f", ay + 1, it)
     }
-    tracking["advice", ac(ay)] <- ctrl@trgtArray[ac(ay+1),"val",]
+    tracking["advice", ac(ay)] <- ctrl@trgtArray[ac(ay + 1),"val",]
     
     ### -------------------------------------------------------------------- ###
     ### Management Implementation
     ### function k()
-    if (!is.null(ctrl.mp$ctrl.k)){
+    if (!is.null(ctrl.mp$ctrl.k)) {
       ctrl.k <- ctrl.mp$ctrl.k
       ctrl.k$ctrl <- ctrl
       ctrl.k$stk <- stk0
@@ -265,15 +264,15 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       out <- do.call("k", ctrl.k)
       ctrl <- out$ctrl
       tracking <- out$tracking
-      tracking["Implementation", ac(ay)] <- ctrl@trgtArray[ac(ay+1),"val",]
+      tracking["Implementation", ac(ay)] <- ctrl@trgtArray[ac(ay + 1),"val",]
     } else {
-      tracking["Implementation", ac(ay)] <- tracking["advice", ac(ay+1)]
+      tracking["Implementation", ac(ay)] <- tracking["advice", ac(ay + 1)]
     }
     
     ### -------------------------------------------------------------------- ###
     ### Technical measures
     ### function w()
-    if (!is.null(ctrl.mp$ctrl.w)){
+    if (!is.null(ctrl.mp$ctrl.w)) {
       ctrl.w <- ctrl.mp$ctrl.w
       ctrl.w$stk <- stk0
       ctrl.w$sqy <- sqy
@@ -290,7 +289,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### -------------------------------------------------------------------- ###
     ### implementation error
     ### function l()
-    if (!is.null(ctrl.mp$ctrl.l)){
+    if (!is.null(ctrl.mp$ctrl.l)) {
       ctrl.l <- ctrl.mp$ctrl.l
       ctrl.l$ctrl <- ctrl
       ctrl.l$tracking <- tracking
@@ -298,7 +297,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       ctrl <- out$ctrl
       tracking <- out$tracking
     }
-    tracking["IEM",ac(ay)] <- ctrl@trgtArray[ac(ay+1), "val",]
+    tracking["IEM",ac(ay)] <- ctrl@trgtArray[ac(ay + 1), "val",]
     
     ### -------------------------------------------------------------------- ###
     ### OM
@@ -306,7 +305,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### fleet dynamics/behaviour
     ### function j()
     
-    if (!is.null(ctrl.mp$ctrl.j)){
+    if (!is.null(ctrl.mp$ctrl.j)) {
       ctrl.j <- ctrl.mp$ctrl.j
       ctrl.j$ctrl <- ctrl
       ctrl.j$tracking <- tracking
@@ -315,13 +314,14 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       ctrl <- out$ctrl
       tracking <- out$tracking
     }
-    tracking["FleetDyn",ac(ay)] <- ctrl@trgtArray[ac(ay+1), "val",]
+    tracking["FleetDyn",ac(ay)] <- ctrl@trgtArray[ac(ay + 1), "val",]
     
     ### -------------------------------------------------------------------- ###
     ### stock dynamics and OM projections
     ### function g()
     
-    if(!is.null(attr(ctrl, "snew"))) harvest(stk)[,ac(ay+1)] <- attr(ctrl, "snew")
+    if (!is.null(attr(ctrl, "snew"))) 
+      harvest(stk)[,ac(ay + 1)] <- attr(ctrl, "snew")
     ### project
     stk[] <- fwd(stk, ctrl = ctrl, sr = sr.om, sr.residuals = sr.om.res,
                  sr.residuals.mult = sr.om.res.mult, maxF = 5)[]
@@ -352,5 +352,5 @@ if (cluster_type == 1) {
 }
 
 ### quit R, if not already closed by previous shutdown signals
-q("yes")
+quit("no")
 
