@@ -191,6 +191,12 @@ length_freq <- function(stk, vy0 = NULL, ay = NULL,
     new_lengths <- new_lengths[new_lengths > 0 &
                             new_lengths <= dims(stk_len)$max]
     
+    ### if only lengths above max length, use max length as plusgroup
+    ### occurs only if stock is at or close to virgin biomass
+    if (length(new_lengths) == 0) {
+      new_lengths <- dims(stk_len)$max
+    }
+    
     ### calculate probabilities at length
     ### normal distribution
     if (len_dist == "normal") {
