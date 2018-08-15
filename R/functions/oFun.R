@@ -1,52 +1,34 @@
-o <- function(...){
-	# in: stk = FLStock, idx = FLIndices
-	#	in: method = character for the wrapper function on the assessment.
-	# out: list with elements stk and idx sampled from OM
+### ------------------------------------------------------------------------ ###
+### o() generate observations ####
+### ------------------------------------------------------------------------ ###
+#' generate observations: observed index/indices and stock
+#' @param method name of the chosen HCR function
+#' @param stk operating model (stock)
+#' @param observations list with index/indices
+#' @param ay current (intermediate) year
+#' @param tracking object for tracking
+#' @param ... additional argument, passed on to function defined by method
+#' @return list with four elements:
+#'   \describe{
+#'     \item{stk}{observed stock}
+#'     \item{idx}{observed index/indices}
+#'     \item{observations}{full observations, including full index/indices}
+#'     \item{tracking}{object for tracking, updated}
+#'   }
+
+o <- function(...) {
 	args <- list(...)
 	method <- args$method
 	args$method <- NULL
-	# checks 
-	if(!is(args$stk, "FLS")) stop("stk must be of class FLStock")
-	# dispatch
+	### checks 
+	if (!is(args$stk, "FLS")) stop("stk must be of class FLStock")
+	### dispatch
 	out <- do.call(method, args)
-	if(!is(out$stk, "FLS")) stop("stk must be of class FLStock")
-	if(!is(out$idx, "FLIndices")) stop("idx must be of class FLIndices")
+	if (!is(out$stk, "FLS")) stop("stk must be of class FLStock")
+	if (!is(out$idx, "FLIndices")) stop("idx must be of class FLIndices")
 	out
 }
 
-sampling.wrapper <- function(stk, observations, vy0, ay, tracking){
-	dataYears <- vy0
-	assessmentYear <- ac(ay)
-	# dataYears is a position vector, not the years themselves
-	stk0 <- stk[,dataYears] # Only data years
-	# *** Add underreporting here if necessary ***
-	# Here, assumes perfect knowledge of removals
-	catch.n(stk0) <- (catch.n(stk0) + 1) # avoid zeros
-	# Generate the indices - Just data years
-	idx <- observations$idx
-	idx0 <- lapply(idx, function(x) x[,dataYears])
-	# Generate full index up to projection year
-	# note this is updating next year index, maybe it should be in the OM section
-	for (idx_count in 1:length(idx)){
-		index(idx[[idx_count]])[,assessmentYear] <- stock.n(stk)[,assessmentYear]*index.q(idx[[idx_count]])[,assessmentYear]
-	}
-	list(stk=stk0, idx=idx0, observations=list(idx=idx), tracking = tracking)
-}
-
-perfectInfo.wrapper <- function(stk, observations, vy0, ay, tracking){
-	dataYears <- vy0
-	assessmentYear <- ac(ay)
-	stk0 <- stk[,dataYears] # Only data years
-	catch.n(stk0) <- (catch.n(stk0) + 1)
-	idx <- observations$idx
-	idx0 <- lapply(idx, function(x) x[,dataYears])
-	# Generate full index up to projection year 
-	# using catchability from first year, which means no error
-	for (idx_count in 1:length(idx)){
-		index(idx[[idx_count]])[,assessmentYear] <- stock.n(stk)[,assessmentYear]*index.q(idx[[idx_count]])[,1]
-	}
-	list(stk=stk0, idx=idx0, observations=list(idx=idx), tracking = tracking)
-}
 
 ### ------------------------------------------------------------------------ ###
 ### wrapper for creating biomass index and length frequencies
@@ -84,27 +66,39 @@ obs_bio_len <- function(...){
 ### create biomass at age index
 ### ------------------------------------------------------------------------ ###
 
-idx_bio <- function(stk, observations, vy0, ay, tracking, ...){
-  #browser()
-  dataYears <- vy0
-  assessmentYear <- ac(ay)
-  # dataYears is a position vector, not the years themselves
-  stk0 <- stk[,dataYears] # Only data years
-  # *** Add underreporting here if necessary ***
-  # Here, assumes perfect knowledge of removals
+idx_bio <- function(stk, observations, ay, tracking,
+                    lst_catch = -1, ### last catch/idx year, relative to 
+                    lst_idx = -1,   ### intermediate year (ay)
+                    ...){
+  
+  ### stock: subset to requested years
+  ### default: lst_catch = -1, i.e. data up to the year before ay
+  stk0 <- window(stk, end = ay + lst_catch)
+  ### assume perfect knowledge of stock characteristics (catch etc.)
+  
   ### next line commented, interferes dramatically with catch numbers at age
   ### used in creation of length frequencies
   #catch.n(stk0) <- (catch.n(stk0) + 1) # avoid zeros
-  # Generate the indices - Just data years
+  
+  ### get indices
   idx <- observations$idx
-  # subset all indices to dataYears
-  idx0 <- lapply(idx, function(x) x[,dataYears])
-  # Generate full index up to projection year
-  # note this is updating next year index, maybe it should be in the OM section
-  for (idx_count in 1:length(idx)){
-    index(idx[[idx_count]])[,assessmentYear] <- stock.n(stk)[,assessmentYear] *
-      index.q(idx[[idx_count]])[,assessmentYear]*stock.wt(stk)[,assessmentYear]
+  
+  ### get years for which index calculation is required
+  ### always calculate index in year ay
+  ### add more years, if requested
+  yrs_new <- ay
+  if (lst_idx > 0) yrs_new <- seq(from = ay, to = ay + lst_idx)
+    
+  ### add/calculate index of current year (ay)
+  for (idx_count in 1:length(idx)) {
+    index(idx[[idx_count]])[, ac(yrs_new)] <- stock.n(stk)[, ac(yrs_new)] *
+      index.q(idx[[idx_count]])[, ac(yrs_new)]*stock.wt(stk)[, ac(yrs_new)]
   }
+  
+  ### subset all indices to requested years -> observations
+  idx0 <- lapply(idx, window, end = ay + lst_idx)
+  
+  ### return observations
   list(stk = stk0, idx = idx0, observations = list(idx = idx), 
        tracking = tracking)
 }
@@ -113,7 +107,8 @@ idx_bio <- function(stk, observations, vy0, ay, tracking, ...){
 ### ------------------------------------------------------------------------ ###
 ### length frequencies
 ### ------------------------------------------------------------------------ ###
-length_freq <- function(stk, vy0 = NULL, ay = NULL,
+length_freq <- function(stk, ay = NULL,
+                        lst_catch = -1,
                         lengths = NULL, ### FLQuant with lengths
                         len_src = "catch", ### slot for numbers at age
                         full_series = FALSE, ### years to be used
@@ -123,19 +118,17 @@ length_freq <- function(stk, vy0 = NULL, ay = NULL,
                         len_sd_cut = 2, ### cut of length spread
                         len_dist = "normal", ### normal or lognormal
                         len_noise_sd = 0, ### observation error
-                        ...){
+                        ...) {
 
-  ### data years as numeric position vector
-  dataYears <- vy0
   ### available years
   yrs_avail <- range(stk)[["minyear"]]:range(stk)[["maxyear"]]
   
   ### use all years, if not otherwise specified
-  if(isTRUE(full_series)){
+  if (isTRUE(full_series)) {
     yrs_new <- yrs_avail
   } else {
     ### otherwise use last data year only
-    yrs_new <- yrs_avail[tail(dataYears, 1)]
+    yrs_new <- ay + lst_catch 
   }
   
   ### extract length-weight parameters
@@ -262,7 +255,7 @@ length_freq <- function(stk, vy0 = NULL, ay = NULL,
   ### insert into stk_len
   catch.n(stk_len)[, ac(yrs_new)] <- res_FLQuant
   
-  ### insert historical length frequencie, if they exist
+  ### insert historical length frequencies, if they exist
   if ("catch_len" %in% names(attributes(stk))) {
     ### find years in both objects
     yrs_hist <- intersect(dimnames(attr(stk, "catch_len"))$year, 
@@ -271,6 +264,9 @@ length_freq <- function(stk, vy0 = NULL, ay = NULL,
                                 dimnames(catch.n(stk_len))$length)
     catch.n(stk_len)[lengths_insert, yrs_hist] <- attr(stk, "catch_len")[lengths_insert, yrs_hist]
   }
+  
+  # ### cut off length frequencies at last data year
+  # stk_len@catch.n <- window(stk_len@catch.n, end = ay + lst_lngth)
   
   ### save refpts and lhpar, if they exist
   if ("refpts" %in% names(attributes(stk))) {

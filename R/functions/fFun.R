@@ -1,46 +1,30 @@
-f <- function(...){#browser()
+### ------------------------------------------------------------------------ ###
+### f() Assessment/Estimator of stock statistics ####
+### ------------------------------------------------------------------------ ###
+#' generate observations: observed index/indices and stock
+#' @param method name of the chosen HCR function
+#' @param stk observed stock
+#' @param idx observed index/indices
+#' @param tracking object for tracking
+#' @param ... additional argument, passed on to function defined by method
+#' @return list with two elements:
+#'   \describe{
+#'     \item{stk}{observed stock, after assessment/estimation}
+#'     \item{tracking}{object for tracking, updated}
+#'   }
+
+f <- function(...) {
 	args <- list(...)
 	method <- args$method
 	args$method <- NULL
-	# in: stk = FLStock, idx = FLIndices
-	#	method = character for the wrapper function on the assessment.
-	# out: list with elements 'stk' updated with the assessment and 'convergence' diagnostics
-	# checks 
-	if(!is(args$stk, "FLS")) stop("stk must be of class FLStock")
-	if(!is(args$idx, "FLIndices")) stop("idx must be of class FLIndices")
-	# dispatch
+	### checks 
+	if (!is(args$stk, "FLS")) stop("stk must be of class FLStock")
+	if (!is(args$idx, "FLIndices")) stop("idx must be of class FLIndices")
+	### dispatch
 	out <- do.call(method, args)
-	if(!is(out$stk, "FLS")) stop("stk must be of class FLStock")
-#	stk <- out$stk
-#	tracking <- out$tracking
-#	return(list(stk = stk, tracking = tracking))
+	if (!is(out$stk, "FLS")) stop("stk must be of class FLStock")
+  ### return
 	out
-}
-
-sca.wrapper <- function(stk, idx, ...){
-	args <- list(...)
-	args$stock <- stk
-	args$indices <- idx
-	if(is.null(args$fit)) args$fit <- 'MP'
-	tracking <- args$tracking
-	args$tracking <- NULL
-	fit <- do.call('a4aSCA', args)
-	stk <- stk + fit
-	tracking["convergence",ac(range(stk)["maxyear"]+1)] <- fit@fitSumm["maxgrad",]
-	list(stk = stk, tracking = tracking)
-}
-
-xsa.wrapper <- function(stk, idx, ...){
-	args <- list(...)
-	args$stock <- stk
-	args$indices <- idx
-	if(is.null(args$control)) args$control <- FLXSA.control()
-	tracking <- args$tracking
-	args$tracking <- NULL
-	fit <- do.call('FLXSA', args)
-	stk <- stk + fit
-	tracking["convergence",ac(range(stk)["maxyear"]+1)] <- fit@control@maxit
-	list(stk = stk, tracking = tracking)
 }
 
 
@@ -51,7 +35,7 @@ xsa.wrapper <- function(stk, idx, ...){
 ### and factors from WKMSYCat34 report for catch rule 3.2.1
 
 wklife_3.2.1_f <- function(stk, tracking, n_catch_yrs, 
-                           option_f = 0, option_r = 0, option_b = 0, ...){
+                           option_f = 0, option_r = 0, option_b = 0, ...) {
   
   ### search for empty years and only compute values if no values available
   ### find year position without data
@@ -97,7 +81,7 @@ wklife_3.2.1_f <- function(stk, tracking, n_catch_yrs,
   ### proxy for ratio FMSY/current exploitation
   factor_f <- do.call(paste0("wklife_3.2.1_f_", args$option_f), args)
   ### avoid negative values
-  if (is(factor_f, "FLQuant")) factor_f <- apply(factor_f, 1:6, function(x){
+  if (is(factor_f, "FLQuant")) factor_f <- apply(factor_f, 1:6, function(x) {
     max(x, 0)
   })
   
@@ -135,7 +119,7 @@ wklife_3.2.1_f <- function(stk, tracking, n_catch_yrs,
 ### ------------------------------------------------------------------------ ###
 ### 2 over 3 rule
 ### i.e. mean of recent 2 years divided by mean of 3 preceding years
-wklife_3.2.1_r_a <- function(idx, n_1 = 2, n_2 = 3, ...){
+wklife_3.2.1_r_a <- function(idx, n_1 = 2, n_2 = 3, ...) {
   
   ### extract index (use only first element of FLIndices)
   idx_temp <- quantSums(index(idx[[1]]))
@@ -154,7 +138,7 @@ wklife_3.2.1_r_a <- function(idx, n_1 = 2, n_2 = 3, ...){
 ### r, option b
 ### ------------------------------------------------------------------------ ###
 ### based on  r = exp(w * slope of lm of log stock size index)
-wklife_3.2.1_r_b <- function(idx, r_w = 1, ...){
+wklife_3.2.1_r_b <- function(idx, r_w = 1, ...) {
   
   ### extract index (use only first element of FLIndices)
   idx_temp <- quantSums(index(idx[[1]]))
@@ -180,7 +164,7 @@ wklife_3.2.1_r_b <- function(idx, r_w = 1, ...){
 ### ------------------------------------------------------------------------ ###
 ### r, option 0
 ### ------------------------------------------------------------------------ ###
-wklife_3.2.1_r_0 <- function(...){
+wklife_3.2.1_r_0 <- function(...) {
   return(NA)
 }
 
@@ -192,9 +176,9 @@ wklife_3.2.1_r_0 <- function(...){
 ### f, option a
 ### ------------------------------------------------------------------------ ###
 wklife_3.2.1_f_a <- function(L_c, L_current, lhpar, refpts, 
-                             perfect_knowledge = FALSE, MK = NULL, ...){
+                             perfect_knowledge = FALSE, MK = NULL, ...) {
   ### retrieve or calculate LF=M
-  if (isTRUE(perfect_knowledge)){
+  if (isTRUE(perfect_knowledge)) {
     L_FM <- refpts["LFeFmsy"]
   } else {
     ### use shortcut for M/K, if requested
@@ -213,7 +197,7 @@ wklife_3.2.1_f_a <- function(L_c, L_current, lhpar, refpts,
 ### f, option b
 ### ------------------------------------------------------------------------ ###
 wklife_3.2.1_f_b <- function(L_c, L_current, lhpar, refpts, 
-                             perfect_knowledge = FALSE, ...){
+                             perfect_knowledge = FALSE, ...) {
   ### calculate current Z
   Z_current <- lhpar["K"] * (lhpar["L_inf"] - L_current) / (L_current - L_c)
   ### calculate f
@@ -230,7 +214,7 @@ wklife_3.2.1_f_b <- function(L_c, L_current, lhpar, refpts,
 ### and Hoenig (2006) and F0.1 from length-based YPR
 
 wklife_3.2.1_f_c <- function(lhpar, L_mean, L_c, n_catch_yrs, 
-                             perfect_knowledge = FALSE, refpts, ...){
+                             perfect_knowledge = FALSE, refpts, ...) {
   
   ### estimate Z from Gedamke and Hoenig (2006) method
   
@@ -245,7 +229,7 @@ wklife_3.2.1_f_c <- function(lhpar, L_mean, L_c, n_catch_yrs,
   yrs_used <- tail(dimnames(L_mean)$year, n_catch_yrs)
     
   #dbg_tmp <- NULL
-  Z_iter <- lapply(dimnames(L_mean)$iter, function(x){
+  Z_iter <- lapply(dimnames(L_mean)$iter, function(x) {
     #dbg_tmp <<- x
     ### optimize
     res <- optim(par = Z_start, fn = GH, method = "BFGS", 
@@ -301,7 +285,7 @@ wklife_3.2.1_f_c <- function(lhpar, L_mean, L_c, n_catch_yrs,
 ### f, option 0
 ### ------------------------------------------------------------------------ ###
 ### return 1
-wklife_3.2.1_f_0 <- function(...){
+wklife_3.2.1_f_0 <- function(...) {
   return(NA)
 }
 
@@ -316,7 +300,7 @@ wklife_3.2.1_f_0 <- function(...){
 ### with I_trigger = w * I_lim where w >= 1, default = 1.4
 ### use lowest observed value as default for I_lim
 wklife_3.2.1_b_a <- function(idx, b_w = 1.4, refpts = NULL, tracking, 
-                             b_z = NULL, ...){
+                             b_z = NULL, ...) {
   
   ### extract index (use only first element of FLIndices)
   idx_temp <- quantSums(index(idx[[1]]))
@@ -335,7 +319,7 @@ wklife_3.2.1_b_a <- function(idx, b_w = 1.4, refpts = NULL, tracking,
   I_ratio <- idx_temp[, tail(dimnames(idx_temp)$year, 1)] / I_trigger
   
   ### calculate b
-  factor_b <- apply(X = I_ratio, MARGIN = 6, FUN = function(x){
+  factor_b <- apply(X = I_ratio, MARGIN = 6, FUN = function(x) {
     min(1, x)
   })
   
@@ -352,7 +336,7 @@ wklife_3.2.1_b_a <- function(idx, b_w = 1.4, refpts = NULL, tracking,
 ### ------------------------------------------------------------------------ ###
 ### ~ PA buffer
 wklife_3.2.1_b_b <- function(buffer_size = 20, buffer_interval = 4, tracking,
-                             idx, ...){
+                             idx, ...) {
   
   ### get last data year
   lst_yr <- range(idx)[["maxyear"]]
@@ -362,7 +346,7 @@ wklife_3.2.1_b_b <- function(buffer_size = 20, buffer_interval = 4, tracking,
   
   ### find years/position of last application and apply buffer, if required
   factor_b <- apply(X = window(tracking["HCR3.2.1b"], end = lst_yr), 
-                    MARGIN = 6, FUN = function(x){
+                    MARGIN = 6, FUN = function(x) {
     
     ### find non-NAs
     nas <- which(!is.na(x))
@@ -373,7 +357,7 @@ wklife_3.2.1_b_b <- function(buffer_size = 20, buffer_interval = 4, tracking,
     ### otherwise find interval since last application
     } else {
       ### return buffer, if time since last application >= requested interval
-      if ((length(x) - max(nas)) >= buffer_interval){
+      if ((length(x) - max(nas)) >= buffer_interval) {
         return(b_size)
       ### otherwise return NA
       } else {
@@ -391,7 +375,7 @@ wklife_3.2.1_b_b <- function(buffer_size = 20, buffer_interval = 4, tracking,
 ### b: option 0
 ### ------------------------------------------------------------------------ ###
 ### return NA
-wklife_3.2.1_b_0 <- function(...){
+wklife_3.2.1_b_0 <- function(...) {
   return(NA)
 }
 ### ------------------------------------------------------------------------ ###
@@ -405,7 +389,7 @@ calc_Lc <- function(object ### FLQuant object with lengths
   L_c <- apply(object, MARGIN = c(2, 6), function(x){
     
     ### return NA if only NAs in data
-    if(all(is.na(x))){
+    if (all(is.na(x))) {
       return(NA)
     }
     
@@ -437,7 +421,7 @@ calc_mean <- function(object, ### FLQuant with lengths/ages
 ){
   
   ### if min is numeric, coerce into FLQuant
-  if(is.numeric(min) & !is(min, "FLQuant")){
+  if (is.numeric(min) & !is(min, "FLQuant")) {
     
     min <- FLQuant(min, dimnames = list(year = dimnames(object)$year, 
                                         iter = dimnames(object)$iter))
@@ -445,34 +429,34 @@ calc_mean <- function(object, ### FLQuant with lengths/ages
   }
   
   ### remove lengths below min
-  if (!is.null(min)){
+  if (!is.null(min)) {
     
     ### get available length classes
     lclass <- dimnames(object)$length
     
     ### go through object and min
     ### loop through years
-    for (year_temp in dimnames(object)$year){
+    for (year_temp in dimnames(object)$year) {
       
       ### go to next year, if no min value available
-      if (all(is.na(min[, year_temp]))){
+      if (all(is.na(min[, year_temp]))) {
         next()
       }
       
       ### loop through iters
-      for (iter_temp in dimnames(object)$iter){
+      for (iter_temp in dimnames(object)$iter) {
         
         ### get min value
         min_temp <- c(min[, year_temp,,,, iter_temp])
         
         ### go to next iteration, if no min value available
-        if (is.na(min_temp)){
+        if (is.na(min_temp)) {
           next()
         }
         
         ### replace numbers with NAs
         ### keep all lengths above min
-        if(!isTRUE(include_min)){
+        if (!isTRUE(include_min)) {
           object[lclass[an(lclass) <= min_temp], year_temp,,,, iter_temp] <- NA
         } else {
           ### keep lengths above and including min
@@ -486,7 +470,7 @@ calc_mean <- function(object, ### FLQuant with lengths/ages
   }
   
   ### calculate mean length/age over all years and iters
-  apply(X = object, MARGIN = c(2, 6), FUN = function(x){
+  apply(X = object, MARGIN = c(2, 6), FUN = function(x) {
     
     ### calculate
     res <- weighted.mean(x = an(dimnames(x)$length), 
@@ -495,7 +479,7 @@ calc_mean <- function(object, ### FLQuant with lengths/ages
     ### check if result obtained
     ### if all cathc at all lengths = 0, return 0 as mean length
     if (is.nan(res)) {
-      if(all(ifelse(is.na(x), 0, x) == 0)) {
+      if (all(ifelse(is.na(x), 0, x) == 0)) {
         res[] <- 0
       }
     }
@@ -536,7 +520,7 @@ YPR <- function(a, b, ### age length conversion
   
   ### mean length
   ### calculate with von Bertalanffy growth function
-  YPR_df$length <- Linf * (1 - exp(- K * (YPR_df$age - t0)))
+  YPR_df$length <- Linf * (1 - exp(-K * (YPR_df$age - t0)))
   
   ### mean weight
   ### calculate with W = a*L^b
@@ -563,7 +547,7 @@ YPR <- function(a, b, ### age length conversion
   
   ### yield in numbers
   YPR_df$yield_no <- (F * YPR_df$selectivity / (F * YPR_df$selectivity + M)) * 
-    YPR_df$survivors * (1 - exp(- YPR_df$selectivity * F - M))
+    YPR_df$survivors * (1 - exp(-YPR_df$selectivity * F - M))
   
   ### yield biomass
   YPR_df$yield_bio <- YPR_df$yield_no * YPR_df$weight
@@ -572,7 +556,7 @@ YPR <- function(a, b, ### age length conversion
   YPR <- sum(YPR_df$yield_bio)
   
   ### return result
-  if (!isTRUE(report)){
+  if (!isTRUE(report)) {
     return(YPR)
   } else {
     return(YPR_df)
@@ -589,7 +573,7 @@ YPR <- function(a, b, ### age length conversion
 GH <- function(Z, L_current_i, L_c_i, L_inf_i, K_i){
   
   ### predict L with given parameters
-  L <- L_inf_i * (1 - ((1-exp(-Z)) / (1-exp(-Z - K_i))) * (1 - L_c_i/L_inf_i))
+  L <- L_inf_i * (1 - ((1 - exp(-Z)) / (1 - exp(-Z - K_i))) * (1 - L_c_i/L_inf_i))
   
   ### remove NAs
   L_current_i <- L_current_i[!is.na(L_current_i)]
@@ -625,15 +609,15 @@ wklife_3.1_f <- function(stk, tracking, idx, interval, start_year, ...){
   data_years <- dims(stk)$minyear:dims(stk)$maxyear
   
   ### check if assessment required
-  if (((tail(data_years, 1)+1) - start_year)%%interval == 0) {
+  if (((tail(data_years, 1) + 1) - start_year) %% interval == 0) {
     
     ### create biomass index
     idx_biomass <- quantSums(index(idx$idx))
     
-    ### ---------------------------------------------------------------------- ###
+    ### -------------------------------------------------------------------- ###
     ### SPiCT in loop ####
-    ### ---------------------------------------------------------------------- ###
-    res <- lapply(1:dim(stk)[6], function(iter_i){
+    ### -------------------------------------------------------------------- ###
+    res <- lapply(1:dim(stk)[6], function(iter_i) {
       
       
       ### create input object for spict
@@ -642,18 +626,18 @@ wklife_3.1_f <- function(stk, tracking, idx, interval, start_year, ...){
                     obsI  = c(FLCore::iter(idx_biomass, iter_i)),
                     timeI = data_years,
                     dteuler = 1/16,
-                    manstart = tail(data_years, 1)+2, ### start of management
-                    timepredc = tail(data_years, 1)+2,
-                    timepredi = tail(data_years, 1)+2,
+                    manstart = tail(data_years, 1) + 2, ### start of management
+                    timepredc = tail(data_years, 1) + 2,
+                    timepredi = tail(data_years, 1) + 2,
                     dtpredc = 1,
                     ffac = 1,
-                    ### turn of covariance reporting, saves memory and computing time!
+              ### turn of covariance reporting, saves memory and computing time!
                     getReportCovariance = FALSE
       )
       
-      ### -------------------------------------------------------------------- ###
+      ### ------------------------------------------------------------------ ###
       ### fit model
-      ### -------------------------------------------------------------------- ###
+      ### ------------------------------------------------------------------ ###
       
       ### fit model
       ### printout to screen is captured
@@ -668,9 +652,9 @@ wklife_3.1_f <- function(stk, tracking, idx, interval, start_year, ...){
       ### stop if model failed entirely
       if (is.null(fitted)) return(return_vals)
       
-      ### ---------------------------------------------------------------- ###
+      ### -------------------------------------------------------------- ###
       ### continue: perform SPiCT forecast
-      ### ---------------------------------------------------------------- ###
+      ### -------------------------------------------------------------- ###
       
       ### select forecast year pointers
       maninds <- which(fitted$inp$time >= fitted$inp$manstart)
@@ -715,9 +699,9 @@ wklife_3.1_f <- function(stk, tracking, idx, interval, start_year, ...){
         return(return_vals)
       }
       
-      ### ---------------------------------------------------------------- ###
+      ### ------------------------------------------------------------------ ###
       ### return results
-      ### ---------------------------------------------------------------- ### 
+      ### ------------------------------------------------------------------ ### 
       
       return(c(converged = fitted$opt$convergence,
                b = sumspict.states(fitted)[1, "estimate"],
@@ -729,9 +713,9 @@ wklife_3.1_f <- function(stk, tracking, idx, interval, start_year, ...){
     })
     
     
-    ### ---------------------------------------------------------------------- ###
+    ### -------------------------------------------------------------------- ###
     ### extract results from model fitting as vectors and save in summary ####
-    ### ---------------------------------------------------------------------- ###
+    ### -------------------------------------------------------------------- ###
     
     for (iter_i in 1:dim(stk)[6]) {
       tracking[c("convergence", "spict_b", "spict_f", "spict_bmsy", "spict_fmsy",
@@ -743,7 +727,7 @@ wklife_3.1_f <- function(stk, tracking, idx, interval, start_year, ...){
   ### otherwise copy advice from last year
   } else {
     
-    tracking["advice", ac(tail(data_years, 1))] <- c(tracking["advice", ac(tail(data_years, 1)-1)])
+    tracking["advice", ac(tail(data_years, 1))] <- c(tracking["advice", ac(tail(data_years, 1) - 1)])
     
     return(list(stk = stk, tracking = tracking))
     

@@ -1,28 +1,31 @@
-# HCR parametrization
-x <- function(...){
+### ------------------------------------------------------------------------ ###
+### x() HCR parametrization ####
+### ------------------------------------------------------------------------ ###
+#' prepare parameters for HCR
+#' @param method name of the chosen HCR function
+#' @param stk perceived stock
+#' @param idx perceived index/indices
+#' @param ay current (intermediate) year
+#' @param tracking object for tracking
+#' @param ... additional argument, passed on to function defined by method
+#' @return list with two elements:
+#'   \describe{
+#'     \item{hcrpars}{parameters passed on to HCR}
+#'     \item{tracking}{object for tracking, updated}
+#'   }
+
+x <- function(...) {
 	args <- list(...)
 	method <- args$method
 	args$method <- NULL
-	# Check inputs
-	if(!is(args$stk,"FLS")) stop("stk argument must be an FLStock")
-	# dispatch
+	### Check inputs
+	if (!is(args$stk,"FLS")) stop("stk argument must be an FLStock")
+	### dispatch
 	out <- do.call(method, args)
-	# check outputs
-	#if(!is(refpts, "FLPar")) stop("The HCR parametrization must return and object of class FLPar")	
-	# return
+	### return
 	out  
 }
 
-movFtrg_rp <- function(stk, frp="f0.1", ay, iy, hcrpars, interval, tracking){
-	if(ay==iy){
-		hcrpars <- c(refpts(brp(FLBRP(stk)))[frp,"harvest"])
-	} else if((ay-iy)%%interval==0){
-		hcrpars <- c(refpts(brp(FLBRP(stk)))[frp,"harvest"])
-	} #else {
-		#hcrpars <- 
-	#}
-	list(hcrpars=hcrpars, tracking=tracking)	
-}
 
 ### ------------------------------------------------------------------------ ###
 ### WKLIFE VII
@@ -43,7 +46,7 @@ wklife_3.2.1_x <- function(stk, tracking, ay, n_catch_yrs, interval = 1,
   hcrpars <- list()
   
   ### check if new advice requested
-  if ((ay - start_year)%%interval == 0){
+  if ((ay - start_year) %% interval == 0) {
     
     ### calculate current catch
     C_current <- yearMeans(catch(stk[, ac(seq(to = lst_yr, 
@@ -79,7 +82,9 @@ wklife_3.2.1_x <- function(stk, tracking, ay, n_catch_yrs, interval = 1,
 ### catch rule 3.2.2 from WKMSYCat34
 ### ------------------------------------------------------------------------ ###
 wklife_3.2.2_x <- function(stk, idx, tracking, ay, interval = 1, w = 1.4,
-                           start_year, index_years = 1, multiplier = NA, ...) {
+                           start_year, index_years = 1, multiplier = NA, 
+                           Fproxy_type = "FproxyMSY",
+                           ...) {
 
   ### last data year
   lst_yr <- range(stk)[["maxyear"]]
@@ -88,17 +93,25 @@ wklife_3.2.2_x <- function(stk, idx, tracking, ay, interval = 1, w = 1.4,
   
   ### retrieve index reference values
   ### check if I_trigger available
-  if (!all(is.na(attr(stk, "refpts")["I_trigger"]))){
+  if (!all(is.na(attr(stk, "refpts")["I_trigger"]))) {
     I_trigger <- attr(stk, "refpts")["I_trigger"]
   } else {
     I_trigger <- attr(stk, "refpts")["I_lim"] * w
   }
   
   ### get index FproxyMSY value
-  I_F_proxy <- attr(stk, "refpts")["I_F_proxy"]
+  if (Fproxy_type == "FproxyMSY") {
+    ### proxy when fished at MSY
+    FproxyMSY <- attr(stk, "refpts")["FproxyMSY"]
+  } else if (Fproxy_type == "FproxyMSY_MK") {
+    ### proxy when fished so that Lmean is LF=M proxy
+    FproxyMSY <- attr(stk, "refpts")["FproxyMSY_MK"]
+  } else {
+    stop("unknown Fproxy type")
+  }
   
   ### check if new advice requested
-  if ((ay - start_year)%%interval == 0){
+  if ((ay - start_year) %% interval == 0) {
     
     ### get biomass index
     idx_tmp <- quantSums(index(idx[[1]]))
@@ -116,7 +129,7 @@ wklife_3.2.2_x <- function(stk, idx, tracking, ay, interval = 1, w = 1.4,
 
     ### extract required object from tracking for HCR
     hcrpars$factors <- FLPar(I_current = I_current, HCR_mult = multiplier,
-                             I_trigger = I_trigger, I_F_proxy = I_F_proxy)
+                             I_trigger = I_trigger, FproxyMSY = FproxyMSY)
     
     ### otherwise use values from last advice year
   } else {
@@ -126,7 +139,7 @@ wklife_3.2.2_x <- function(stk, idx, tracking, ay, interval = 1, w = 1.4,
                              HCR_mult = tracking["HCRmult",
                                                  ac(lst_yr - (interval - 1))],
                              I_trigger = I_trigger, 
-                             I_F_proxy = I_F_proxy)
+                             FproxyMSY = FproxyMSY)
     
   }
   
@@ -144,7 +157,7 @@ wklife_3.1_x <- function(tracking, ay, ...) {
   ### extract advice
   hcrpars <- list()
   ### stored in year before (data year)
-  hcrpars$factors <- tracking["advice", ac(ay-1)]
+  hcrpars$factors <- tracking["advice", ac(ay - 1)]
   
   return(list(tracking = tracking, hcrpars = hcrpars))
   

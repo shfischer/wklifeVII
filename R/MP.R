@@ -166,8 +166,6 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     
     gc()
     cat(ay, "> ")
-    vy0 <- 1:(ay - y0) # data years (positions vector) - one less than current year
-    sqy <- ac((ay - 1):(ay - nsqy)) # years for status quo computations
     
     tracking["OM.f", ac(ay - 1)] <- fbar(stk)[,ac(ay - 1)]
     tracking["OM.ssb", ac(ay - 1)] <- ssb(stk)[,ac(ay - 1)]
@@ -179,31 +177,26 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### -------------------------------------------------------------------- ###
     
     ### -------------------------------------------------------------------- ###
-    ### function o() - observations
+    ### function o(): observations
     ctrl.oem <- ctrl.mp$ctrl.oem
     ctrl.oem$stk <- stk
     ctrl.oem$observations <- observations
-    ctrl.oem$vy0 <- vy0
     ctrl.oem$ay <- ay
     ctrl.oem$tracking <- tracking
     if (!is.null(ctrl.mp$ctrl.oem)) {
       o.out <- do.call("o", ctrl.oem)
-    } else {
-      ctrl.oem$method <- 'perfectInfo.wrapper'
-      o.out <- do.call("o", ctrl.oem)
-    }
-    stk0 <- o.out$stk
-    idx0 <- o.out$idx
-    observations <- o.out$observations
-    tracking <- o.out$tracking
+      stk0 <- o.out$stk
+      idx0 <- o.out$idx
+      observations <- o.out$observations
+      tracking <- o.out$tracking
+    } 
     
     ### -------------------------------------------------------------------- ###
     ### MP ####
     ### -------------------------------------------------------------------- ###
     
     ### -------------------------------------------------------------------- ###
-    ### Assessment/Estimator of stock statistics
-    ### function f()
+    ### function f(): Assessment/Estimator of stock statistics
     if (!is.null(ctrl.mp$ctrl.f)) {
       ctrl.f <- ctrl.mp$ctrl.f
       ctrl.f$stk <- stk0
@@ -213,18 +206,16 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       stk0 <- out.assess$stk
       tracking <- out.assess$tracking
     }
-    tracking["Fperc",ac(ay)] <- fdy <- fbar(stk0)[,ac(ay - 1)]
+    tracking["Fperc", ac(ay)] <- fdy <- fbar(stk0)[, ac(ay - 1)]
     
     
     ### -------------------------------------------------------------------- ###
-    ### HCR parametrization
-    ### function x()
+    ### function x(): HCR parametrization
     if (!is.null(ctrl.mp$ctrl.x)) {
       ctrl.x <- ctrl.mp$ctrl.x
       ctrl.x$stk <- stk0
       ctrl.x$idx <- idx0
       ctrl.x$ay <- ay
-      ctrl.x$iy <- iy
       ctrl.x$tracking <- tracking
       if (exists("hcrpars")) ctrl.x$hcrpars <- hcrpars
       out <- do.call("x", ctrl.x)
@@ -233,8 +224,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     }
     
     ### -------------------------------------------------------------------- ###
-    ### HCR
-    ### function h()
+    ### function h(): HCR
     if (!is.null(ctrl.mp$ctrl.h)) {
       ctrl.h <- ctrl.mp$ctrl.h
       ctrl.h$stk <- stk0
@@ -247,9 +237,10 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       }
       ctrl <- do.call("h", ctrl.h)
     } else {
-      ctrl <- getCtrl(yearMeans(fbar(stk0)[,sqy]), "f", ay + 1, it)
+      ctrl <- getCtrl(yearMeans(fbar(stk0)[, ac((ay - 1):(ay - nsqy))]), "f", 
+                      ay + 1, it)
     }
-    tracking["advice", ac(ay)] <- ctrl@trgtArray[ac(ay + 1),"val",]
+    tracking["advice", ac(ay)] <- ctrl@trgtArray[ac(ay + 1),"val", ]
     
     ### -------------------------------------------------------------------- ###
     ### Management Implementation
@@ -259,23 +250,20 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       ctrl.k$ctrl <- ctrl
       ctrl.k$stk <- stk0
       ctrl.k$ay <- ay
-      #ctrl.k$refCatch <- tracking["Implementation", ac(ay)]
       ctrl.k$tracking <- tracking
       out <- do.call("k", ctrl.k)
       ctrl <- out$ctrl
       tracking <- out$tracking
-      tracking["Implementation", ac(ay)] <- ctrl@trgtArray[ac(ay + 1),"val",]
+      tracking["Implementation", ac(ay)] <- ctrl@trgtArray[ac(ay + 1),"val", ]
     } else {
       tracking["Implementation", ac(ay)] <- tracking["advice", ac(ay + 1)]
     }
     
     ### -------------------------------------------------------------------- ###
-    ### Technical measures
-    ### function w()
+    ### function w(): Technical measures
     if (!is.null(ctrl.mp$ctrl.w)) {
       ctrl.w <- ctrl.mp$ctrl.w
       ctrl.w$stk <- stk0
-      ctrl.w$sqy <- sqy
       ctrl.w$tracking <- tracking
       out <- do.call("w", ctrl.w)
       attr(ctrl, "snew") <- out$snew
@@ -287,8 +275,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### -------------------------------------------------------------------- ###
     
     ### -------------------------------------------------------------------- ###
-    ### implementation error
-    ### function l()
+    ### function l(): implementation error
     if (!is.null(ctrl.mp$ctrl.l)) {
       ctrl.l <- ctrl.mp$ctrl.l
       ctrl.l$ctrl <- ctrl
@@ -297,13 +284,12 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       ctrl <- out$ctrl
       tracking <- out$tracking
     }
-    tracking["IEM",ac(ay)] <- ctrl@trgtArray[ac(ay + 1), "val",]
+    tracking["IEM",ac(ay)] <- ctrl@trgtArray[ac(ay + 1), "val", ]
     
     ### -------------------------------------------------------------------- ###
     ### OM
     ### -------------------------------------------------------------------- ###
-    ### fleet dynamics/behaviour
-    ### function j()
+    ### function j(): fleet dynamics/behaviour
     
     if (!is.null(ctrl.mp$ctrl.j)) {
       ctrl.j <- ctrl.mp$ctrl.j
@@ -314,7 +300,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
       ctrl <- out$ctrl
       tracking <- out$tracking
     }
-    tracking["FleetDyn",ac(ay)] <- ctrl@trgtArray[ac(ay + 1), "val",]
+    tracking["FleetDyn", ac(ay)] <- ctrl@trgtArray[ac(ay + 1), "val", ]
     
     ### -------------------------------------------------------------------- ###
     ### stock dynamics and OM projections
