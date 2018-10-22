@@ -1,6 +1,6 @@
 ### ------------------------------------------------------------------------ ###
-### MSE for ICES WKLIFE VII 2017
-### testing catch rules from ICES WKMSYCat34 2017
+### MSE for ICES WKLIFE VII, VIII, ...
+### testing data limited catch rules from ICES WKMSYCat34 2017
 ### ------------------------------------------------------------------------ ###
 ### author: Simon Fischer (Cefas), simon.fischer@cefas.co.uk
 ### based on the a4a standard MSE developed at JRC
@@ -8,35 +8,45 @@
 ### ------------------------------------------------------------------------ ###
 ### created 08/2017
 ### last modifications:
-### 2018 Simon Fischer
+### 2018-10 Simon Fischer
 ### ------------------------------------------------------------------------ ###
 
 ### ------------------------------------------------------------------------ ###
 ### load arguments passed to R ####
 ### ------------------------------------------------------------------------ ###
+### this script is usually called from job submission file on a HPC
 ### load arguments
 args <- commandArgs(TRUE)
-### extract them
-for (i in 1:length(args)) eval(parse(text = args[[i]]))
 
-### set default values
-### number of cores, i.e. processes to spawn
-if (!isTRUE(exists("n_cores"))) { 
-  stop("n_cores need to be passed to R!")
-} else {
-  n_cores <- n_cores - 1 ### slaves, exluding master
-}
-### parallelization architecture
-if (!isTRUE(exists("cluster_type"))) cluster_type <- 2
-### split each scenario into n parts?
-if (!isTRUE(exists("n_parts"))) n_parts <- 1
-### scenarios to be simulated
-if (!isTRUE(exists("scn_start")) | !isTRUE(exists("scn_end"))) {
-  scns <- TRUE
-} else {
-  scns <- scn_start:scn_end
-}
+### evaluate arguments, if they are passed to R:
+if (length(args) > 0) {
 
+  ### extract arguments
+  for (i in seq_along(args)) eval(parse(text = args[[i]]))
+
+  ### set default values
+  ### number of cores, i.e. processes to spawn
+  if (!isTRUE(exists("n_cores"))) { 
+    stop("n_cores need to be passed to R!")
+  } else {
+    n_cores <- n_cores - 1 ### slaves, exluding master
+  }
+  ### parallelization architecture
+  if (!isTRUE(exists("cluster_type"))) cluster_type <- 2
+  ### split each scenario into n parts?
+  if (!isTRUE(exists("n_parts"))) n_parts <- 1
+  ### scenarios to be simulated
+  if (!isTRUE(exists("scn_start")) | !isTRUE(exists("scn_end"))) {
+    scns <- TRUE
+  } else {
+    scns <- scn_start:scn_end
+  }
+  
+} else {
+  n_parts <- 1 ### no split
+  scns <- TRUE ### run all scenarios
+  cluster_type <- NULL
+}
 
 ### ------------------------------------------------------------------------ ###
 ### set up parallel computing environment ####
@@ -44,7 +54,7 @@ if (!isTRUE(exists("scn_start")) | !isTRUE(exists("scn_end"))) {
 ### needs to be load first, otherwise the MPI breaks down ...
 
 ### for local in-node/PC parallelization
-if (cluster_type == 1) {
+if (isTRUE(cluster_type == 1)) {
   
   library(doParallel)
   cl <- makeCluster(n_cores)
@@ -52,7 +62,7 @@ if (cluster_type == 1) {
   getDoParWorkers()
   getDoParName()
   
-} else if (cluster_type == 2) {
+} else if (isTRUE(cluster_type == 2)) {
   
   library(doMPI)
   cl <- startMPIcluster(count = n_cores) # one less than requested in the .job file
@@ -64,7 +74,7 @@ if (cluster_type == 1) {
 ### packages ####
 ### ------------------------------------------------------------------------ ###
 required_pckgs <- c("FLash", "FLAssess", "FLXSA", "ggplotFL",
-                    "FLBRP", "data.table", "spict")
+                    "FLBRP", "data.table", "spict", "foreach")
 ### save as object in order to avoid output to screen
 . <- lapply(required_pckgs, function(x){
   suppressMessages(library(x, character.only = TRUE))
@@ -74,11 +84,9 @@ required_pckgs <- c("FLash", "FLAssess", "FLXSA", "ggplotFL",
 ### functions ####
 ### ------------------------------------------------------------------------ ###
 
-### select R scripts from functions folder
-load_files <- list.files("functions/")
-load_files <- load_files[grepl(pattern = "*.R$", x = load_files)]
-### source the scripts
-invisible(lapply(paste0("functions/", load_files), source))
+### source the scripts from functions folder
+invisible(lapply(list.files(path = "functions/", pattern = "*.R$", 
+                            full.names = TRUE), source))
 
 ### ------------------------------------------------------------------------ ###
 ### load scenario definitions ####
@@ -110,6 +118,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
   
   ### load the objects for stk, recruitment, ...
   load(paste0("input/stocks/", ctrl.mp$scn_desc$uncertainty, "/",
+              ctrl.mp$ctrl.om$OM_scn,
               ctrl.mp$ctrl.om$stk_pos, ".RData"))
   sr.om.res.mult <- ctrl.mp$ctrl.om$sr.res.mult
   
@@ -175,9 +184,9 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### -------------------------------------------------------------------- ###
     ### OEM ####
     ### -------------------------------------------------------------------- ###
-    
+    ### observations & observation error
     ### -------------------------------------------------------------------- ###
-    ### function o(): observations
+    ### o() - observations
     ctrl.oem <- ctrl.mp$ctrl.oem
     ctrl.oem$stk <- stk
     ctrl.oem$observations <- observations
@@ -196,7 +205,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### -------------------------------------------------------------------- ###
     
     ### -------------------------------------------------------------------- ###
-    ### function f(): Assessment/Estimator of stock statistics
+    ### f(): Assessment/Estimator of stock statistics
     if (!is.null(ctrl.mp$ctrl.f)) {
       ctrl.f <- ctrl.mp$ctrl.f
       ctrl.f$stk <- stk0
@@ -210,7 +219,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     
     
     ### -------------------------------------------------------------------- ###
-    ### function x(): HCR parametrization
+    ### x(): HCR parametrization
     if (!is.null(ctrl.mp$ctrl.x)) {
       ctrl.x <- ctrl.mp$ctrl.x
       ctrl.x$stk <- stk0
@@ -224,7 +233,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     }
     
     ### -------------------------------------------------------------------- ###
-    ### function h(): HCR
+    ### h(): apply HCR
     if (!is.null(ctrl.mp$ctrl.h)) {
       ctrl.h <- ctrl.mp$ctrl.h
       ctrl.h$stk <- stk0
@@ -243,8 +252,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     tracking["advice", ac(ay)] <- ctrl@trgtArray[ac(ay + 1),"val", ]
     
     ### -------------------------------------------------------------------- ###
-    ### Management Implementation
-    ### function k()
+    ### k(): Management Implementation
     if (!is.null(ctrl.mp$ctrl.k)) {
       ctrl.k <- ctrl.mp$ctrl.k
       ctrl.k$ctrl <- ctrl
@@ -260,7 +268,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     }
     
     ### -------------------------------------------------------------------- ###
-    ### function w(): Technical measures
+    ### w(): Technical measures
     if (!is.null(ctrl.mp$ctrl.w)) {
       ctrl.w <- ctrl.mp$ctrl.w
       ctrl.w$stk <- stk0
@@ -275,7 +283,7 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     ### -------------------------------------------------------------------- ###
     
     ### -------------------------------------------------------------------- ###
-    ### function l(): implementation error
+    ### l(): implementation error
     if (!is.null(ctrl.mp$ctrl.l)) {
       ctrl.l <- ctrl.mp$ctrl.l
       ctrl.l$ctrl <- ctrl
@@ -287,9 +295,9 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     tracking["IEM",ac(ay)] <- ctrl@trgtArray[ac(ay + 1), "val", ]
     
     ### -------------------------------------------------------------------- ###
-    ### OM
+    ### OM ####
     ### -------------------------------------------------------------------- ###
-    ### function j(): fleet dynamics/behaviour
+    ### j(): fleet dynamics/behaviour
     
     if (!is.null(ctrl.mp$ctrl.j)) {
       ctrl.j <- ctrl.mp$ctrl.j
@@ -304,7 +312,6 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
     
     ### -------------------------------------------------------------------- ###
     ### stock dynamics and OM projections
-    ### function g()
     
     if (!is.null(attr(ctrl, "snew"))) 
       harvest(stk)[,ac(ay + 1)] <- attr(ctrl, "snew")
@@ -319,22 +326,29 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
   attr(stk, "tracking") <- tracking
   attr(stk, "ctrl.mp") <- ctrl.mp
   ### save stk to disk
-  saveRDS(stk, file = paste0("/gpfs/afmcefas/simonf/output/", 
-                             scn, "_", part, ".rds"))
+  if (n_parts > 1) {
+    saveRDS(stk, file = paste0("/gpfs/afmcefas/simonf/output/", 
+                              scn, "_", part, ".rds"))
+  } else {
+    saveRDS(stk, file = paste0("/gpfs/afmcefas/simonf/output/combined/", 
+                               scn, ".rds"))
+  }
   
 } ### end of scenario loop
 
 Sys.time()
 
 ### ------------------------------------------------------------------------ ###
-### close down parallel workers
+### close down parallel workers ####
 ### ------------------------------------------------------------------------ ###
 
-if (cluster_type == 1) {
-  stopCluster(cl)
-} else if (cluster_type == 2) {
-  closeCluster(cl)
-  mpi.quit()
+if (exists("cluster_type")) {
+  if (cluster_type == 1) {
+    stopCluster(cl)
+  } else if (cluster_type == 2) {
+    closeCluster(cl)
+    mpi.quit()
+  }
 }
 
 ### quit R, if not already closed by previous shutdown signals
