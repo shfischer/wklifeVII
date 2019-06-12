@@ -1,6 +1,6 @@
 ### ------------------------------------------------------------------------ ###
 ### create biological stocks from life-history parameters ####
-### as used for WKLIFE VII 2017
+### as used for WKLIFE VII 2017, WKLIFE VIII 2018
 ### ------------------------------------------------------------------------ ###
 ### author: Simon Fischer (Cefas), simon.fischer@cefas.co.uk
 ### FRAMEWORK based on the a4a standard MSE developed at JRC
@@ -9,8 +9,6 @@
 ### Karin Olsson
 ### ------------------------------------------------------------------------ ###
 ### created 08/2017
-### last modifications:
-### 2017-12 Simon Fischer
 ### ------------------------------------------------------------------------ ###
 
 
@@ -26,11 +24,9 @@ cl <- makeCluster(28)
 registerDoParallel(cl)
 
 ### load additional functions
-### select R scripts from functions folder
-load_files <- list.files("functions/")
-load_files <- load_files[grepl(pattern = "*.R$", x = load_files)]
-### source the scripts
-invisible(lapply(paste0("functions/", load_files), source))
+### source the scripts from functions folder
+invisible(lapply(list.files(path = "functions/", pattern = "*.R$", 
+                            full.names = TRUE), source))
 
 ### ------------------------------------------------------------------------ ###
 ### load data ####
@@ -53,7 +49,7 @@ stocks_lh$s <- 0.75
 
 ### change name for stocks that appear twice
 stocks_lh$stock <- as.character(stocks_lh$stock)
-if(nrow(stocks_lh) > 15){
+if (nrow(stocks_lh) > 15) {
   stocks_lh$stock[29] <- paste0(stocks_lh$stock[29], "_2")
 }
 
@@ -130,15 +126,53 @@ if(nrow(stocks_lh) > 15){
 ### ------------------------------------------------------------------------ ###
 
 ### set fbar range
+### only used for default OMs
 stocks_lh$minfbar <- c(1,1,2,9,1,1,1,1,1,1,1,1,1,1,1,3,4,2,2,2,1,1,1,1,1,1,3,1,
                        4)[1:nrow(stocks_lh)]
 stocks_lh$maxfbar <- c(3,6,15,23,5,3,4,5,2,5,4,5,9,8,4,13,11,11,15,13,3,3,5,5,
                        10,4,11,4,20)[1:nrow(stocks_lh)]
 
+### OM scenarios (M, etc.)
+OM_scns <- data.frame(### id
+                      id = NA,
+                      ### natural mortality
+                      m = c(rep("gislason", 3), rep("lorenzen", 12),
+                            "gislason"), 
+                      ### number of iterations
+                      n_iter = c(500, rep(50, 15)), 
+                      ### number of years for MSE
+                      n_years = c(100, rep(50, 15)),
+                      ### recruitment
+                      rec_sd = c(0.3, 0.3, 0.6, rep(c(0.3, 0.6), each = 6), 0.3),
+                      rec_rho = c(0.2, rep(0, 15)),
+                      ### components for gislason mortality
+                      M1 = c(rep(NA, 3), rep(c(0.1, 0.2, 0.3, 0.1, 0.2, 0.3), 2),
+                             NA),
+                      M2 = c(rep(NA, 3), rep(c(0.2, 0.4, 0.6, 0.4, 0.8, 1.2), 2),
+                             NA),
+                      ### I_trigger modification
+                      I_trigger = c(rep(NA, 15), "B_trigger"),
+                      ### observation error
+                      obs_error = c(TRUE, rep(FALSE, 15))
+                      )
+OM_scns$id <- with(OM_scns, paste(substr(m, 1, 3), rec_sd, M1, M2,
+                                  sep = "_"))
+OM_scns$id[c(1, 16)] <- c("", "I_trigger")
+### save
+saveRDS(object = OM_scns, file = "input/OM_scns.rds")
+
 ### create FLBRP objects from life-history data
-brps <- foreach(i = split(stocks_lh, 1:nrow(stocks_lh)),
-                .errorhandling = "pass", 
-                .packages = c("FLife", "FLBRP")) %dopar% {
+brps <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
+                .final = function(x) {
+                  names(x) <- OM_scns$id
+                  return(x)
+                }) %:%
+  foreach(i = split(stocks_lh, 1:nrow(stocks_lh)),
+          .errorhandling = "pass", .packages = c("FLife", "FLBRP"),
+          .final = function(x) {
+            names(x) <- stocks_lh$stock
+            return(x)
+          }) %dopar% {
   
   ### create brp
   ### get lh params
@@ -150,54 +184,135 @@ brps <- foreach(i = split(stocks_lh, 1:nrow(stocks_lh)),
   ### create missing pars
   lh_pars <- lhPar(lh_pars)
   
-  # Max age: age at l = 0.95 * linf
-  max_age <- ceiling(log(0.05)/(-c(lh_pars["k"]))+c(lh_pars["t0"]))
+  ### Max age: age at l = 0.95 * linf
+  max_age <- ceiling(log(0.05)/(-c(lh_pars["k"])) + c(lh_pars["t0"]))
+  ### max from F
+  ### alternative for Lorenzen mortality
+  if (OM_scn$m == "lorenzen") {
+    ### age with 5% survival
+    max_ageP <- ceiling(-log(0.05)/(OM_scn$M1))
+    if (max_age < max_ageP) max_age <- max_ageP
+  }
+  
+  ### set up M
+  ### either return function or vector with values
+  m_def <- if (OM_scn$m == "gislason") {
+    ### hardcode Gislason natural mortality function here
+    ### used to be default in FLife
+    function(length,params) {
+      exp(0.55)*(length^-1.61) %*% (params["linf"]^1.44) %*% params["k"]
+    }
+  } else if (OM_scn$m == "lorenzen") {
+    
+      ages <- 1:max_age
+      M1 <- OM_scn$M1
+      M2 <- OM_scn$M2
+      age_M1 <- 1
+      age_M2 <- 20
+      
+    a <- exp(log((vonB(age_M2, lh_pars))^log(M2) / 
+                   (vonB(age_M1, lh_pars))^log(M1)) / 
+      log((vonB(age_M2, lh_pars)) / (vonB(age_M1, lh_pars))))
+    b <- log(M1 / M2) /
+      log( (vonB(age_M2, lh_pars)) / (vonB(age_M1, lh_pars)))
+    a * vonB(ages, lh_pars)^b
+    
+  } else if (is.numeric(as.numeric(as.character(OM_scn$m)))) {
+    as.numeric(as.character(OM_scn$m))
+  }
+  
+  ### fbar range: 
+  ### for default OMs: use manual definition 
+  ### for modified OMs: use age at full selection
+  if (isTRUE(OM_scn$id == "")) {
+    fbar_age <- c(i$minfbar, i$maxfbar)
+  } else {
+    fbar_age <- rep(c(round(lh_pars["a1"])), 2)
+  }
+    
   
   ### create brp
   brp <- lhEql(lh_pars, range = c(min = 1, max = max_age, 
-                                  minfbar = i$minfbar, maxfbar = i$maxfbar, 
-                                  plusgroup = max_age))
+                                  minfbar = fbar_age[1], maxfbar = fbar_age[2], 
+                                  plusgroup = max_age), 
+               m = m_def
+               )
   
   ### save life-history parameters in FLBRP
   attr(brp, "lhpar") <- lh_pars
+  attr(brp, "OM_scn") <- OM_scn
+  attr(brp, "lhpar_calc") <- FLPar(
+    M = mean(m(brp)),
+    M_mat = weighted.mean(x = m(brp), w = mat(brp)),
+    MK = weighted.mean(x = m(brp), w = mat(brp)) / c(lh_pars["k"]),
+    amax = dims(brp)$plusgroup
+  )
+  
+  name(brp) <- i$stock
+  desc(brp) <- i$stock
   
   return(brp)
 
 }
-names(brps) <- stocks_lh$stock
+#names(brps) <- stocks_lh$stock
 
 ### save brps
-saveRDS(brps, file = "input/brps.rds")
+saveRDS(brps, file = "input/brps_wklife8.rds")
+saveRDS(brps[[1]], file = "input/brps.rds")
+# brps <- readRDS(file = "input/brps_wklife8.rds")
+# brps$I_trigger <- brps[[1]]
 
 ### calculate M
-stocks_lh$M <- unlist(lapply(brps, function(x){
-  mean(m(x))
-}))
+stocks_lh$M <- sapply(brps[[1]], function(x){
+ mean(m(x))
+})
 ### mature M (only mature proportion of stock considered)
-stocks_lh$M_mat <- unlist(lapply(brps, function(x){
+stocks_lh$M_mat <- sapply(brps[[1]], function(x){
   weighted.mean(x = m(x), w = mat(x))
-}))
+})
 
 ### M/K
 stocks_lh$MK <- with(stocks_lh, M_mat / k)
 
+### max age
+stocks_lh$amax <- sapply(brps[[1]], function(x) dims(x)$plusgroup)
+
 ### get reference points
-ref_pts <- lapply(brps, refpts)
+ref_pts <- lapply(brps[[1]], refpts)
 names(ref_pts) <- stocks_lh$stock
 saveRDS(ref_pts, "input/refpts.rds")
 
 ### save stock list
 write.csv(file = "input/stock_list_full2.csv", x = stocks_lh)
 
+### get full list of lhpars, including calculated ones
+# lhpar_calc <- lapply(brps[[1]], function(x) x@lhpar)
+# as.data.frame(lhpar_calc)
+
+### extract and save refpts
+refpts <- lapply(brps, function(x) {
+  lapply(x, refpts)
+})
+### refpts
+refpts_tmp <- lapply(brps, function(x) lapply(x, refpts))
+saveRDS(refpts_tmp, file = "input/refpts_wklife8.rds")
+saveRDS(refpts_tmp[[1]], file = "input/refpts.rds")
+
 ### ------------------------------------------------------------------------ ###
 ### create FLStocks ####
 ### ------------------------------------------------------------------------ ###
 
 ### number of iterations
-its <- 500
+#its <- 500
 
-OMs <- foreach(i = brps, .errorhandling = "pass", 
-                .packages = c("FLife", "FLasher", "FLBRP")) %dopar% {
+OMs <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
+               brps_i = brps,
+               .final = function(x) {
+                 names(x) <- OM_scns$id
+                 return(x)
+               }) %:% 
+  foreach(i = brps_i, .errorhandling = "pass", 
+          .packages = c("FLife", "FLasher", "FLBRP")) %dopar% {
   
   #### coerce FLBRP into FLStock
   ### keep only second year (first year with non zero catch)
@@ -211,14 +326,15 @@ OMs <- foreach(i = brps, .errorhandling = "pass",
   stk <- fwdWindow(stk, i, end = 100)
   
   ### propagate with requested number of iterations
-  stk <- propagate(stk, its)
+  stk <- propagate(stk, OM_scn$n_iter)
   
   ### create FLSR object
   stk_sr <- FLSR(params = params(i), model = model(i))
   
   ### create residuals for (historical) projection
   set.seed(0)
-  residuals <- rlnoise(its, rec(stk) %=% 0, sd = 0.2, b = 0.3)
+  residuals <- rlnoise(OM_scn$n_iter, rec(stk) %=% 0, 
+                       sd = OM_scn$rec_sd, b = OM_scn$rec_rho)
   
   ### project forward, targeting 0.5 F_MSY
   years_target <- ((dims(stk)$minyear + 1):75)
@@ -246,6 +362,15 @@ OMs <- foreach(i = brps, .errorhandling = "pass",
   lhpar <- attr(i, "lhpar")
   attr(i, "lhpar") <- NULL
   
+  ### set name of stock
+  name(stk_one_way) <- name(i)
+  name(stk_roller_coaster) <- name(i)
+  name(stk_sr) <- name(i)
+  ### description
+  desc(stk_one_way) <- paste(name(i), "one-way")
+  desc(stk_roller_coaster) <- paste(name(i), "roller-coaster")
+  desc(stk_sr) <- name(i)
+  
   ### return list
   return(list(sr = stk_sr, brp = i, lhpar = lhpar, 
               stk_one_way = stk_one_way, 
@@ -254,39 +379,62 @@ OMs <- foreach(i = brps, .errorhandling = "pass",
 }
 
 ### name the FLStock objects
-OMs <- lapply(seq_along(OMs), function(x){
-  name(OMs[[x]]$stk_roller_coaster) <- ac(stocks_lh$stock[x])
-  name(OMs[[x]]$stk_one_way) <- ac(stocks_lh$stock[x])
-  return(OMs[[x]])
-})
+# OMs <- lapply(seq_along(OMs), function(x){
+#   name(OMs[[x]]$stk_roller_coaster) <- ac(stocks_lh$stock[x])
+#   name(OMs[[x]]$stk_one_way) <- ac(stocks_lh$stock[x])
+#   return(OMs[[x]])
+# })
 
 ### set names for list elements
-names(OMs) <- stocks_lh$stock
+# names(OMs) <- stocks_lh$stock
+#names(OMs) <- OM_scns$id
+for (OM_i in seq_along(OMs)) {
+  names(OMs[[OM_i]]) <- stocks_lh$stock
+}
 
 ### save list
-saveRDS(OMs, "input/stock_list_full.rds")
+saveRDS(OMs, "input/stock_list_full_wklife8.rds")
+saveRDS(OMs[[1]], "input/stock_list_full.rds")
+# OMs <- readRDS("input/stock_list_full_wklife8.rds")
+# OMs$I_trigger <- OMs[[1]]
+
 
 ### split into individual stocks
 ### and subset to last 26 years
-OMs_one_way <- lapply(OMs, function(x){
-  x$stk_roller_coaster <- NULL
-  names(x)[length(names(x))] <- "stk"
-  x$stk <- window(x$stk, start = 75)
-  return(x)
+OMs2 <- lapply(OMs, function(y) {
+  OMs_one_way <- lapply(y, function(x){
+    x$stk_roller_coaster <- NULL
+    names(x)[length(names(x))] <- "stk"
+    x$stk <- window(x$stk, start = 75)
+    return(x)
+  })
+  OMs_roller_coaster <- lapply(y, function(x){
+    x$stk_one_way <- NULL
+    names(x)[length(names(x))] <- "stk"
+    x$stk <- window(x$stk, start = 75)
+    return(x)
+  })
+  ### combine into single list
+  ### sort, to get order used in WKLIFE VII
+  return(c(OMs_one_way[1:15], OMs_roller_coaster[1:15],
+    OMs_one_way[-c(1:15)], OMs_roller_coaster[-c(1:15)]))
 })
-OMs_roller_coaster <- lapply(OMs, function(x){
-  x$stk_one_way <- NULL
-  names(x)[length(names(x))] <- "stk"
-  x$stk <- window(x$stk, start = 75)
-  return(x)
-})
-### combine into single list
-### sort, to get order used in WKLIFE VII
-OMs <- c(OMs_one_way[1:15], OMs_roller_coaster[1:15],
-         OMs_one_way[-c(1:15)], OMs_roller_coaster[-c(1:15)])
+
+
+# names(OMs) <- OM_scns$id
+# for (OM_i in seq_along(OMs)) {
+#   names(OMs[[OM_i]]) <- c(stocks_lh$stock[1:15], stocks_lh$stock[1:15],
+#                           stocks_lh$stock[-c(1:15)], stocks_lh$stock[-c(1:15)])
+# }
+
+# ### combine into single list
+# ### sort, to get order used in WKLIFE VII
+# OMs <- c(OMs_one_way[1:15], OMs_roller_coaster[1:15],
+#          OMs_one_way[-c(1:15)], OMs_roller_coaster[-c(1:15)])
 
 ### save list
-saveRDS(OMs, "input/stock_list.rds")
+saveRDS(OMs, "input/stock_list_wklife8.rds")
+saveRDS(OMs[[1]], "input/stock_list.rds")
 # 
 # stk1 <- (function(){
 #   load("input/stocks/perfect_knowledge/1.RData")

@@ -18,21 +18,21 @@
 ### template with default options
 ctrl.mp_3.2.1 <- list(scns = data.frame(id = "wklife_test",
                                   stringsAsFactors = FALSE),
-                stock_name = NA,
-                ctrl.om = list(stk_pos = NA, stk = "stk", sr = "srbh", sr.res = "srbh.res",
-                               observations = "observations", sr.res.mult = TRUE),
-                ctrl.oem = list(method = "obs_bio_len", len_noise_sd = 0.0, 
-                                len_sd = 1, len_sd_cut = 2),
-                ctrl.f = list(method = "wklife_3.2.1_f", n_catch_yrs = 1),
-                ctrl.x = list(method = "wklife_3.2.1_x", n_catch_yrs = 1, multiplier = NA,
-                              interval = 2, start_year = 100),
-                ctrl.h = list(method = "wklife_3.2.1_h"),
-                ctrl.k = NULL,
-                ctrl.w = NULL,
-                ctrl.j = list(method = "ctrl_catch_workaround"),
-                ctrl.l = NULL,
-                scn_desc = list(catch_rule = "3.2.1", 
-                                uncertainty = "perfect_knowledge")
+  stock_name = NA,
+  ctrl.om = list(stk_pos = NA, stk = "stk", sr = "srbh", sr.res = "srbh.res",
+                 observations = "observations", sr.res.mult = TRUE),
+  ctrl.oem = list(method = "obs_bio_len", len_noise_sd = 0.0, 
+                  len_sd = 1, len_sd_cut = 2),
+  ctrl.f = list(method = "wklife_3.2.1_f", n_catch_yrs = 1),
+  ctrl.x = list(method = "wklife_3.2.1_x", n_catch_yrs = 1, multiplier = NA,
+                interval = 2, start_year = 100),
+  ctrl.h = list(method = "wklife_3.2.1_h"),
+  ctrl.k = NULL,
+  ctrl.w = NULL,
+  ctrl.j = list(method = "ctrl_catch_workaround"),
+  ctrl.l = NULL,
+  scn_desc = list(catch_rule = "3.2.1", 
+                  uncertainty = "perfect_knowledge")
 )
 
 ### create list with control objects
@@ -365,7 +365,7 @@ ctrl.mps_3.2.1_combs_error <- lapply(ctrl.mps_3.2.1_combs_error, function(x){
 
 ### add to list
 ctrl.mps <- c(ctrl.mps, ctrl.mps_3.2.1_combs_error)
-
+### 627:686
 ### ------------------------------------------------------------------------ ###
 ### 3.2.1 combinations with error & multiplier for pol-nsea ####
 ### ------------------------------------------------------------------------ ###
@@ -650,6 +650,223 @@ ctrl.mps <- c(ctrl.mps, ctrl.mp_spict_list)
 ### 6805-6862
 
 ### ------------------------------------------------------------------------ ###
+### 58 stocks - 3.2.1 default - change data timing ####
+### ------------------------------------------------------------------------ ###
+### get template for all stocks and fishing history
+### 6863:6920
+ctrl.mp_3.2.1_idx <- ctrl.mps[6515:6572]
+
+### annual TAC
+### 6921:6978
+ctrl.mp_3.2.1_annual <- lapply(ctrl.mp_3.2.1_idx, function(x) {
+  x$ctrl.x$interval <- 1
+  return(x)
+})
+### index up to intermediate year
+### 6979:7036
+ctrl.mp_3.2.1_idx0 <- lapply(ctrl.mp_3.2.1_idx, function(x) {
+  x$ctrl.oem$lst_idx <- 0
+  return(x)
+})
+### index up to intermediate year & annual TAC
+### 7037:7094
+ctrl.mp_3.2.1_idx0_annual <- lapply(ctrl.mp_3.2.1_idx, function(x) {
+  x$ctrl.oem$lst_idx <- 0
+  x$ctrl.x$interval <- 1
+  return(x)
+})
+### index up to TAC year, catch up to intermediate year
+### 7095:7152
+ctrl.mp_3.2.1_idx1_catch0 <- lapply(ctrl.mp_3.2.1_idx, function(x) {
+  x$ctrl.oem$lst_idx <- 1
+  x$ctrl.oem$lst_catch <- 0
+  return(x)
+})
+### index up to TAC year, catch up to intermediate year & annual TAC
+### 7152:7210
+ctrl.mp_3.2.1_idx1_catch0_annual <- lapply(ctrl.mp_3.2.1_idx, function(x) {
+  x$ctrl.oem$lst_idx <- 1
+  x$ctrl.oem$lst_catch <- 0
+  x$ctrl.x$interval <- 1
+  return(x)
+})
+
+### add scenarios
+### 6863:7210
+ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.1_idx, ctrl.mp_3.2.1_annual,
+              ctrl.mp_3.2.1_idx0, ctrl.mp_3.2.1_idx0_annual,
+              ctrl.mp_3.2.1_idx1_catch0, ctrl.mp_3.2.1_idx1_catch0_annual)
+
+### ------------------------------------------------------------------------ ###
+### 58 stocks - 3.2.2 - change data timing ####
+### ------------------------------------------------------------------------ ###
+### get template
+ctrl.mp_3.2.2 <- ctrl.mps[[362]]
+ctrl.mp_3.2.2 <- lapply(1:58, function(x) {
+  tmp <- ctrl.mp_3.2.2
+  tmp$ctrl.om$stk_pos <- x
+  tmp$ctrl.x$Fproxy_type <- "FproxyMSY"
+  return(tmp)
+})
+### 7211:7268
+
+### annual TAC
+ctrl.mp_3.2.2_annual <- lapply(ctrl.mp_3.2.2, function(x) {
+  x$ctrl.x$interval <- 1
+  return(x)
+})
+### 77269:7326
+
+### use LFeM
+ctrl.mp_3.2.2_LFeM <- lapply(ctrl.mp_3.2.2, function(x) {
+  x$ctrl.x$Fproxy_type <- "FproxyMSY_MK"
+  return(x)
+})
+### 7327:7384
+
+### use LFeM & annual TAC
+ctrl.mp_3.2.2_LFeM_annual <- lapply(ctrl.mp_3.2.2_annual, function(x) {
+  x$ctrl.x$Fproxy_type <- "FproxyMSY_MK"
+  return(x)
+})
+### 7385:7442
+
+### index up to intermediate year
+ctrl.mp_3.2.2_idx0 <- lapply(ctrl.mp_3.2.2, function(x) {
+  x$ctrl.oem$lst_idx <- 0
+  return(x)
+})
+### 7443:7500
+
+### index up to intermediate year & annual TAC
+ctrl.mp_3.2.2_idx0_annual <- lapply(ctrl.mp_3.2.2_annual, function(x) {
+  x$ctrl.oem$lst_idx <- 0
+  return(x)
+})
+### 7501:7558
+
+### index up to intermediate year & use LFeM
+ctrl.mp_3.2.2_idx0_LFeM <- lapply(ctrl.mp_3.2.2_idx0, function(x) {
+  x$ctrl.x$Fproxy_type <- "FproxyMSY_MK"
+  return(x)
+})
+### 7559:7616
+
+### index up to intermediate year & use LFeM & annual TAC
+ctrl.mp_3.2.2_idx0_LFeM_annual <- lapply(ctrl.mp_3.2.2_idx0_annual, function(x) {
+  x$ctrl.x$Fproxy_type <- "FproxyMSY_MK"
+  return(x)
+})
+### 7617:7674
+
+
+### index up to catch year
+### (catch not used in catch rule)
+ctrl.mp_3.2.2_idx1 <- lapply(ctrl.mp_3.2.2, function(x) {
+  x$ctrl.oem$lst_idx <- 1
+  return(x)
+})
+### 7675:7732
+
+### index up to catch year & annual TAC
+ctrl.mp_3.2.2_idx1_annual <- lapply(ctrl.mp_3.2.2_annual, function(x) {
+  x$ctrl.oem$lst_idx <- 1
+  return(x)
+})
+### 7733:7790
+
+### index up to catch year & use LFeM
+ctrl.mp_3.2.2_idx1_LFeM <- lapply(ctrl.mp_3.2.2_idx1, function(x) {
+  x$ctrl.x$Fproxy_type <- "FproxyMSY_MK"
+  return(x)
+})
+### 7791:7848
+
+### index up to catch year & use LFeM & annual TAC
+ctrl.mp_3.2.2_idx1_LFeM_annual <- lapply(ctrl.mp_3.2.2_idx1_annual, function(x) {
+  x$ctrl.x$Fproxy_type <- "FproxyMSY_MK"
+  return(x)
+})
+### 7849:7906
+
+### add scenarios
+ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.2, ctrl.mp_3.2.2_annual, ctrl.mp_3.2.2_LFeM,
+              ctrl.mp_3.2.2_LFeM_annual, ctrl.mp_3.2.2_idx0, 
+              ctrl.mp_3.2.2_idx0_annual, ctrl.mp_3.2.2_idx0_LFeM,
+              ctrl.mp_3.2.2_idx0_LFeM_annual, ctrl.mp_3.2.2_idx1,
+              ctrl.mp_3.2.2_idx1_annual, ctrl.mp_3.2.2_idx1_LFeM,
+              ctrl.mp_3.2.2_idx1_LFeM_annual)
+### 7211:7906
+
+### ------------------------------------------------------------------------ ###
+### WKLIFE8: modifications of OMs ####
+### ------------------------------------------------------------------------ ###
+ctrl.mp_3.2.1_mod <- list(
+  scns = data.frame(id = "wklife_test", stringsAsFactors = FALSE),
+  stock_name = NA,
+  ctrl.om = list(stk_pos = NA, stk = "stk", sr = "srbh", sr.res = "srbh.res",
+                 observations = "observations", sr.res.mult = TRUE),
+  ctrl.oem = list(method = "obs_bio_len", len_noise_sd = 0.0, 
+                  len_sd = 1, len_sd_cut = 2),
+  ctrl.f = list(method = "wklife_3.2.1_f", n_catch_yrs = 1,
+                option_r = "a", option_f = "a", option_b = "a",
+                perfect_knowledge = TRUE),
+  ctrl.x = list(method = "wklife_3.2.1_x", n_catch_yrs = 1, multiplier = NA,
+                interval = 2, start_year = 100),
+  ctrl.h = list(method = "wklife_3.2.1_h"),
+  ctrl.j = list(method = "ctrl_catch_workaround"),
+  scn_desc = list(catch_rule = "3.2.1", 
+                  uncertainty = "perfect_knowledge")
+)
+### add all 58 stocks
+ctrl.mp_3.2.1_mod <- lapply(1:58, function(x) {
+  tmp <- ctrl.mp_3.2.1_mod
+  tmp$ctrl.om$stk_pos <- x
+  return(tmp)
+})
+### add OM scenarios
+ctrl.mp_3.2.1_mod <- lapply(
+  c("gis_0.3_NA_NA/", "gis_0.6_NA_NA/", "lor_0.3_0.1_0.2/", "lor_0.3_0.2_0.4/", 
+    "lor_0.3_0.3_0.6/", "lor_0.3_0.1_0.4/", "lor_0.3_0.2_0.8/", 
+    "lor_0.3_0.3_1.2/", "lor_0.6_0.1_0.2/", "lor_0.6_0.2_0.4/", 
+    "lor_0.6_0.3_0.6/", "lor_0.6_0.1_0.4/", "lor_0.6_0.2_0.8/", 
+    "lor_0.6_0.3_1.2/"), 
+  function(x) {
+    lapply(ctrl.mp_3.2.1_mod, function(y) {
+      tmp <- y
+      tmp$ctrl.om$OM_scn <- x
+      return(tmp)
+    })
+})
+### unlist
+ctrl.mp_3.2.1_mod <- unlist(ctrl.mp_3.2.1_mod, recursive = FALSE)
+
+### add
+ctrl.mps <- c(ctrl.mps, ctrl.mp_3.2.1_mod)
+### 7907:8718
+
+### ------------------------------------------------------------------------ ###
+### more perfect information ####
+### ------------------------------------------------------------------------ ###
+### use SSB index with Btrigger
+ctrl.mp_more_perfect <- ctrl.mps[7907:7964]
+  
+### add SSB index specification
+ctrl.mp_more_perfect <- lapply(ctrl.mp_more_perfect, function(x) {
+  
+  x$ctrl.oem$ssb_idx <- TRUE
+  x$ctrl.om$OM_scn <- "I_trigger/"
+  return(x)
+  
+})
+
+ctrl.mps <- c(ctrl.mps, ctrl.mp_more_perfect)
+### 8719:8776
+
+
+
+
+### ------------------------------------------------------------------------ ###
 ### create table with specifications ####
 ### ------------------------------------------------------------------------ ###
 
@@ -660,17 +877,16 @@ wklife <- read.csv("input/stock_list_full2.csv")
 scn_df <- data.frame(scenario = seq_along(ctrl.mps))
 
 ### stock position
-scn_df$stk_pos <- unlist(lapply(ctrl.mps, function(x){
+scn_df$stk_pos <- sapply(ctrl.mps, function(x){
   x$ctrl.om$stk_pos
-}))
+})
 ### position in list of 15 stocks
-scn_df$stk_pos2 <- unlist(lapply(scn_df$stk_pos, function(x){
-  if(x <= 15) return(x)
-  if(x <=30) return(x - 15)
-  if(x <= 44) return(x - 30 + 15)
-  if(x <= 58) return(x - 44 + 15)
-}))
-#scn_df$stk_pos2 <- ifelse(scn_df$stk_pos <= 15, scn_df$stk_pos, scn_df$stk_pos - 15)
+scn_df$stk_pos2 <- sapply(scn_df$stk_pos, function(x){
+  if (x <= 15) return(x)
+  if (x <= 30) return(x - 15)
+  if (x <= 44) return(x - 30 + 15)
+  if (x <= 58) return(x - 44 + 15)
+})
 
 ### set stock name
 scn_df <- merge(x = scn_df, y = wklife[, c("X", "stock")], 
@@ -684,68 +900,93 @@ scn_df$fhist <- ifelse(scn_df$stk_pos %in% c(1:15, 31:44),
                        "one-way", "roller-coaster")
 
 ### catch rule
-scn_df$catch_rule <- unlist(lapply(ctrl.mps, function(x){
+scn_df$catch_rule <- sapply(ctrl.mps, function(x){
   x$scn_desc$catch_rule
-}))
+})
 
 ### TAC periodicity
-scn_df$TAC <- unlist(lapply(ctrl.mps, function(x){
+scn_df$TAC <- sapply(ctrl.mps, function(x){
   ifelse(is.null(x$ctrl.x$interval), NA, x$ctrl.x$interval)
-}))
+})
 
 ### catch rule options
 scn_df$options <- unlist(lapply(ctrl.mps, function(x){
-  opts <- unlist(lapply(names(x$ctrl.f[3:length(x$ctrl.f)]), function(y){
+  opts <- sapply(names(x$ctrl.f[3:length(x$ctrl.f)]), function(y){
     y
     #res_temp <- strsplit(y, split = "_")[[1]]
     #ifelse(length(res_temp) == 1, res_temp[1], res_temp[2])
-  }))
+  })
   pars <- unlist(x$ctrl.f[3:length(x$ctrl.f)])
   paste(opts, pars, sep = ":", collapse = " ")
 }))
 
 ### uncertainty
-scn_df$uncertainty <- unlist(lapply(ctrl.mps, function(x){
+scn_df$uncertainty <- sapply(ctrl.mps, function(x){
   x$scn_desc$uncertainty
-}))
+})
 
 ### perfect knowledge
-scn_df$perfect_knowledge <- unlist(lapply(ctrl.mps, function(x){
+scn_df$perfect_knowledge <- sapply(ctrl.mps, function(x) {
   res <- x$ctrl.f$perfect_knowledge
-  if(is.null(res)) return(FALSE)
+  if (is.null(res)) return(FALSE)
   return(res)
-}))
+})
 
 ### HCR multiplier
-scn_df$HCRmult <- unlist(lapply(ctrl.mps, function(x){
+scn_df$HCRmult <- sapply(ctrl.mps, function(x){
   ifelse(is.null(x$ctrl.x$multiplier), NA, x$ctrl.x$multiplier)
-}))
+})
 
 ### w
-scn_df$w <- unlist(lapply(ctrl.mps, function(x){
+scn_df$w <- sapply(ctrl.mps, function(x) {
   ifelse(is.null(x$ctrl.x$w), NA, x$ctrl.x$w)
-}))
+})
 
 ### w
-scn_df$b_w <- unlist(lapply(ctrl.mps, function(x){
+scn_df$b_w <- sapply(ctrl.mps, function(x) {
   ifelse(is.null(x$ctrl.f$b_w), NA, x$ctrl.f$b_w)
-}))
+})
 
 ### z (b exponent)
-scn_df$b_z <- unlist(lapply(ctrl.mps, function(x){
+scn_df$b_z <- sapply(ctrl.mps, function(x) {
   ifelse(is.null(x$ctrl.f$b_z), NA, x$ctrl.f$b_z)
-}))
+})
 
 ### constraints
-scn_df$upper_constraint <- unlist(lapply(ctrl.mps, function(x){
+scn_df$upper_constraint <- sapply(ctrl.mps, function(x){
   ifelse(is.null(x$ctrl.h$upper_constraint), NA, x$ctrl.h$upper_constraint)
-}))
-scn_df$lower_constraint <- unlist(lapply(ctrl.mps, function(x){
+})
+scn_df$lower_constraint <- sapply(ctrl.mps, function(x){
   ifelse(is.null(x$ctrl.h$lower_constraint), NA, x$ctrl.h$lower_constraint)
-}))
+})
 
 ### get rid of row names
 row.names(scn_df) <- NULL
+
+### last index year
+scn_df$lst_idx <- sapply(ctrl.mps, function(x) {
+  ifelse(is.null(x$ctrl.oem$lst_idx), -1, x$ctrl.oem$lst_idx)
+})
+### last catch year
+scn_df$lst_catch <- sapply(ctrl.mps, function(x) {
+  ifelse(is.null(x$ctrl.oem$lst_catch), -1, x$ctrl.oem$lst_catch)
+})
+
+### 3.2.2 FproxyMSY type
+### last catch year
+scn_df$FproxyMSY_type <- sapply(ctrl.mps, function(x) {
+  ifelse(is.null(x$ctrl.x$Fproxy_type), NA, x$ctrl.x$Fproxy_type)
+})
+
+### OM scenario
+scn_df$OM_scn <- sapply(ctrl.mps, function(x) {
+  ifelse(is.null(x$ctrl.om$OM_scn), NA, x$ctrl.om$OM_scn)
+})
+
+### I trigger value
+scn_df$ssb_idx <- sapply(ctrl.mps, function(x) {
+  ifelse(is.null(x$ctrl.oem$ssb_idx), NA, x$ctrl.om$OM_scn)
+})
 
 ### remove the ctrl.mp... objects from environment
 rm(list = (ls()[grepl(ls(), pattern = "ctrl.mp_") | 
