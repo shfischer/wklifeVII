@@ -2,161 +2,366 @@ library(FLCore)
 library(ggplotFL)
 library(Cairo)
 library(reshape2)
+library(dplyr)
 
 ### set up parallel computing environment
 library(doParallel)
-cl <- makeCluster(28)
+cl <- makeCluster(parallel::detectCores())
 registerDoParallel(cl)
 getDoParWorkers()
 getDoParName()
 
 ### ------------------------------------------------------------------------ ###
-### list files ####
+### functions ####
 ### ------------------------------------------------------------------------ ###
 
-path_res <- "output/perfect_knowledge/"
-files <- list.files(path_res)
+### select R scripts from functions folder
+load_files <- list.files("functions/")
+load_files <- load_files[grepl(pattern = "*.R$", x = load_files)]
+### source the scripts
+invisible(lapply(paste0("functions/", load_files), source))
 
-### keep only MSR results
-files <- files[grepl(pattern = "^[0-9]{1,}_[0-9]{1,}\\.rds$", x = files)]
+source("MP_scenarios.R")
+
+### ------------------------------------------------------------------------ ###
+### find result files ####
+### ------------------------------------------------------------------------ ###
+
+### get file names
+#path_res <- "output/perfect_knowledge/"
+path_res <- "/gpfs/afmcefas/simonf/output/"
+files <- list.files(path = path_res, pattern = "^[0-9]{1,}_[0-9]{1,}\\.rds$")
 
 ### split files name into parts (scenario, part, extension)
 files_desc <- strsplit(x = files, split = "_|[.]")
 
 ### create data frame with file info
-df <- data.frame(scenario = unlist(lapply(files_desc, function(x){x[[1]]})),
-                 part = unlist(lapply(files_desc, function(x){x[[2]]})),
+df <- data.frame(scenario = as.numeric(sapply(files_desc, "[[", 1)),
+                 part = as.numeric(sapply(files_desc, "[[", 2)),
                  file_name = files)
-### coerce into numeric
-df$scenario <- as.numeric(as.character(df$scenario))
-df$part <- as.numeric(as.character(df$part))
 
 ### sort
 df <- df[order(df$scenario, df$part), ]
 
 ### show number of parts for each scenario
-df2 <- data.frame(table(df$scenario))
-names(df2) <- c("scenario", "count")
-df2$scenario <- as.numeric(as.character(df2$scenario))
+count(df, scenario) %>%
+  filter(n == 10)
 
-### list with all scenarios
-df3 <- data.frame(scenario = 1:180)
-
-### merge
-df4 <- merge(df2, df3, all = TRUE)
-
-### show missing scenarios and scenarios with parts<10
-df4[is.na(df4$count) | (!is.na(df4$count) & df4$count != 10), ]
-
-# wrong <- c(5,11,17,23,29,35,41,47,53,59,65,71,77,83,89,95,101,107,113,119,125,131,137,143,149,155,161,167,173,179)
-# seq(from = 5, to = 180, by = 6)
+### keep only scenarios that have fininshed, i.e. 10 parts
+df_process <- df %>% 
+  full_join(count(df, scenario)) %>%
+  filter(n == 10)
 
 ### ------------------------------------------------------------------------ ###
 ### combine parts ####
 ### ------------------------------------------------------------------------ ###
 
-
-### function that combines list of object over iter dimension
-ibind <- function(object){
+. <- foreach(scenario = unique(df_process$scenario), 
+               .packages = c("FLCore"), 
+               .export = ls()) %dopar% {
   
-  if (!is.list(object)) stop("object has to be a list")
-  
-  ### get iterations per list element
-  iters_list <- unlist(lapply(object, function(x){dims(x)$iter}))
-  
-  ### create list with iterations for each part
-  iter_end <- cumsum(iters_list)
-  iter_start <- iter_end - iters_list + 1
-  iters <- lapply(seq_along(iter_start), function(x){
-    seq(iter_start[x], iter_end[x])
+  ### get parts results
+  stk_list <- lapply(df$file_name[df$scenario == scenario], function(file_i){
+    readRDS(paste0(path_res, file_i))
   })
   
-  ### create template with correct iter dimension
-  template <- propagate(FLCore::iter(object[[1]], 1), sum(iters_list))
+  ### combine parts
+  stk_tmp <- do.call(stock_ibind, stk_list)
   
-  ### fill with values from list
-  for (part in seq_along(iters)) {
-    
-    FLCore::iter(template, iters[[part]]) <- object[[part]]
-    
-  }
+  ### set name
+  name(stk_tmp) <- as.character(scenario)
   
-  return(template)
+  ### save
+  saveRDS(stk_tmp, file = paste0(path_res, "combined/", scenario, ".rds"))
   
 }
 
-### load parts and combine them
-scenarios <- df2$scenario#df2$scenario[df2$count == 10]
-### only 3.2.2 scenarios
-#scenarios <- 181:210
+### remove original files
+file.remove(paste0(path_res, df_process$file_name))
+
+### ------------------------------------------------------------------------ ###
+### "correct" SSB and catch ####
+### ------------------------------------------------------------------------ ###
+### once a stock collapsed (SSB < 1), it stays collapsed
+
+### select scenarios for full analysis
+scns <- list.files(path = paste0(path_res, "combined"), 
+                   pattern = "[0-9]+\\.rds")
+scns <- gsub(x = scns, pattern = "\\.rds", replacement = "")
+scns <- sort(as.numeric(scns))
+
+### subset to new ones...
+scns <- scns[scns > 7906]
+
+dir.create(paste0(path_res, "combined/corrected"))
+
+### load refpts
+refpts <- readRDS("input/refpts_wklife8.rds")
+
+### loop through all scenarios
+res <- foreach(scenario = scns,
+               .packages = "FLCore",
+               .export = c("path_res", "refpts", "scn_df")) %dopar% {
+  #browser()
+  ### scenario definitions
+  OM_scn_i <- gsub(x = scn_df$OM_scn[scn_df$scenario == scenario], 
+                   pattern = "/", replacement = "")
+  stock <- scn_df$stock[scn_df$scenario == scenario]
+                 
+  ### load results
+  stk_tmp <- readRDS(paste0(path_res, "combined/", scenario, ".rds"))
+  
+  ### get reference points
+  refpts_i <- refpts[[OM_scn_i]][[stock]]
+  
+  ### find first F=5 for each iteration
+  ### return numeric year or NA if F not maxed out
+  fmax <- apply(fbar(stk_tmp), 6, FUN = function(x){
+    #browser()
+    as.numeric(dimnames(x)$year[min(which(x >= 4.999999999))])
+  })
+  
+  ### extract SSB and catch and Fbar
+  SSB_old <- SSB <- ssb(stk_tmp)
+  catch_old <- catch <- catch(stk_tmp)
+  fbar_old <- fbar <- fbar(stk_tmp)
+  ### assume collapse/extinction if SSB drops below 1 (0.1% of B0)
+  for (i in which(is.finite(fmax))) {
+    ### years to check
+    years <- NA
+    years <- seq(from = min(fmax[,,,,, i] + 1, range(stk_tmp)[["maxyear"]]),
+                 to = dims(SSB)$maxyear)
+    ### find first year with SSB < 1
+    min_year <- years[min(which(SSB[, ac(years),,,, i] < 1))]
+    ### years to correct
+    if (length(min_year) > 0) {
+      if (!is.na(min_year)) {
+        years_chg <- years[years >= min_year]
+       
+        ### change SSB
+        SSB[, ac(years_chg),,,, i] <- 0
+        ### and catch
+        catch[, ac(years_chg),,,, i] <- 0
+        ### and Fbar
+        fbar[, ac(years_chg),,,, i] <- 0
+      }
+    }
+  }
+  
+  ### calculate values relative to MSY
+  ssb_rel <- SSB / refpts_i["msy", "ssb"]
+  fbar_rel <- fbar / refpts_i["msy", "harvest"]
+  
+  ### save SSB and catch, both versions
+  saveRDS(object = list(ssb = SSB, catch = catch, ssb_old = SSB_old,
+                        catch_old = catch_old, fbar = fbar, 
+                        fbar_old = fbar_old, fbar_rel = fbar_rel,
+                        ssb_rel = ssb_rel),
+          file = paste0(path_res, "combined/corrected/", scenario, ".rds"))
+  
+}
+
+### ------------------------------------------------------------------------ ###
+### fish at Fmsy ####
+### ------------------------------------------------------------------------ ###
+### as reference scenario, for all OMs
+
+### load OM scenario definitions
+OM_scns <- readRDS("input/OM_scns.rds")
+
+### get stock names corresponding to stk_pos
+stk_name_pos <- unique(scn_df[, c("stk_pos", "stk_pos2", "fhist", "stock")])
+
+### fish at Fmsy
+res <- foreach(OM_scn = OM_scns$id,
+               .final = function(x) {
+                 names(x) <- OM_scns$id
+                 return(x)}) %:% 
+  foreach(stk_pos = stk_name_pos$stk_pos, 
+          stk_pos2 = stk_name_pos$stk_pos2,
+          stock = as.character(stk_name_pos$stock),
+          .export = c("refpts", "scn_df"),
+          .packages = c("FLash"), .errorhandling = "pass",
+          .final = function(x) {
+            names(x) <- as.character(stk_name_pos$stock)
+            return(x)
+          }) %dopar% {
+                 # if (stk_pos > 2) stop()
+                 #browser()
+  ### load OM
+  load(paste0("input/stocks/perfect_knowledge/", OM_scn, "/", stk_pos, 
+              ".RData"))
+  ### get refpts
+  refpts_i <- refpts[[OM_scn]][[stock]]
+  
+  ### fish at FMSY
+  ctrl <- fwdControl(data.frame(year = 101:dims(stk)$maxyear, 
+                               quantity = "f",
+                               val = c(refpts_i["msy", "harvest"])))
+  stk_fwd <- fwd(stk, ctrl = ctrl, sr = sr.om, sr.residuals = sr.om.res,
+                 sr.residuals.mult = TRUE, maxF = 5)
+  
+  return(stk_fwd)
+  
+}
+### save
+saveRDS(object = res, file = "input/stocks/perfect_knowledge/fished_msy.rds")
+
+### get catch and ssb over projection period
+catch_MSY <- lapply(res, function(x) {
+  lapply(x, function(y) {
+    apply(window(catch(y), start = 101), 6, sum)
+  })
+})
+ssb_MSY <- lapply(res, function(x) {
+  lapply(x, function(y) {
+    apply(window(ssb(y), start = 101), 6, sum)
+  })
+})
+
+### save them
+saveRDS(object = catch_MSY, file = "input/all_stocks_catch_at_Fmsy_wklife8.rds")
+saveRDS(object = ssb_MSY, file = "input/all_stocks_ssb_at_Fmsy_wklife8.rds")
+
+### ------------------------------------------------------------------------ ###
+### stats ####
+### ------------------------------------------------------------------------ ###
+
+### load values achieved when stocks fished at MSY
+catch_msy <- readRDS("input/all_stocks_catch_at_Fmsy_wklife8.rds")
+ssb_msy <- readRDS("input/all_stocks_ssb_at_Fmsy_wklife8.rds")
+### reference points
+refpts <- readRDS("input/refpts_wklife8.rds")
+B_lim <- 162.79
+
+### go through requested scenarios
+stats <- foreach(scenario = scns,
+                 stk_pos = scn_df$stk_pos[scn_df$scenario %in% scns],
+                 stk_pos2 = scn_df$stk_pos2[scn_df$scenario %in% scns],
+                 stock = as.character(scn_df$stock[scn_df$scenario %in% scns]),
+                 OM_scn = gsub(x = scn_df$OM_scn[scn_df$scenario %in% scns],
+                               pattern = "/", replacement = ""),
+                 .packages = "FLCore",
+                 .export = c("B_lim", "catch_msy", "ssb_msy", 
+                             "refpts")) %dopar% {
+                               
+  ### load quants
+  quants <- readRDS(paste0(path_res, "combined/corrected/", scenario, ".rds"))
+ 
+  ### subset to simulation period
+  quants <- window(FLQuants(quants), start = 101)
+  
+  ### get catch and SSB when fished at MSY
+  catch_msy_i <- catch_msy[[OM_scn]][[stk_pos]]
+  ssb_msy_i <- ssb_msy[[OM_scn]][[stk_pos]]
+  ### reference points
+  refpts_i <- refpts[[OM_scn]][[stock]]
+  
+  ### list for storing results
+  res <- list()
+  ### number of iterations for current scenario
+  n_iter <- dim(quants[[1]])[6]
+  n_years <- dim(quants[[1]])[2]
+  
+  ### proportion where SSB was below B_lim
+  res$risk_blim <- 
+    sum(quants$ssb < B_lim) / (n_iter*n_years)
+  ### proportion of iterations where SSB dropped below B_lim
+  res$risk_blim_iter <-
+    sum(yearSums(quants$ssb < B_lim) > 0) / n_iter
+  
+  ### stock collapse = ssb < 1
+  res$risk_collapse <- sum(quants$ssb < 1) / (n_iter*n_years)
+  ### proportion of iterations with collapse
+  res$risk_collapse_iter <-
+    sum(yearSums(quants$ssb < 1) > 0) / n_iter
+  
+  ### risk SSB < half Bmsy
+  res$risk_0.5Bmsy <- 
+    sum(quants$ssb < c(refpts_i["msy", "ssb"]/2)) / (n_iter*n_years)
+  
+  ### risk SSB < Bmsy
+  res$risk_Bmsy <- 
+    sum(quants$ssb < c(refpts_i["msy", "ssb"])) / (n_iter*n_years)
+  
+  ### yield and SSB relative to when fished at MSY
+  res$yield_relFmsy <- median(yearSums(quants$catch) / catch_msy_i)
+  res$ssb_relFmsy <- median(yearSums(quants$ssb) / ssb_msy_i)
+  
+  ### Fbar and SSB relative to MSY reference points
+  res$ssb_rel <- median(yearMeans(quants$ssb / refpts_i["msy", "ssb"]))
+  res$f_rel <- median(yearMeans(quants$fbar / refpts_i["msy", "harvest"]))
+ 
+  ### catch iav
+  res$catch_iav <- c(iav(object = quants$catch, period = 2, start = 101,
+                         summary_per_iter = mean, summary = median))
+ 
+  return(res)
+ 
+}
+
+stats <- do.call(rbind, lapply(stats, data.frame))
+stats$scenario <- scns
+
+### save
+saveRDS(stats, file = "output/stats_corrected_wklife8.RDS")
+
+### combine results with scenario definitions
+source("MP_scenarios.R")
+
+### merge
+stats <- merge(stats, scn_df, all = TRUE)
+### sort
+stats <- stats[order(stats$scenario), ]
+
+### save
+saveRDS(stats, file = "output/stats_corrected_scn_wklife8.RDS")
+stats <- readRDS("output/stats_corrected_scn_wklife8.RDS")
 
 
-res <- foreach(scenario = scenarios,
-               .packages = c("FLCore"),
-               .export = ls()) %dopar% {
-                 
-                 ### get parts
-                 parts_i <- nrow(df[df$scenario == scenario, ])
-                 stk_list <- lapply(1:parts_i,
-                                    function(part){
-                                      readRDS(paste0(path_res, df$file_name[df$scenario == scenario &
-                                                                              df$part == part]))
-                                    })
-                 
-                 ### fill stock
-                 stk_temp <- ibind(stk_list)
-                 
-                 ### do the same for the attributes
-                 attr(stk_temp, "lhpar") <- ibind(lapply(stk_list, function(x){
-                   attr(x, "lhpar")
-                 }))
-                 attr(stk_temp, "refpts") <- ibind(lapply(stk_list, function(x){
-                   attr(x, "refpts")
-                 }))
-                 attr(stk_temp, "tracking") <- ibind(lapply(stk_list, function(x){
-                   attr(x, "tracking")
-                 }))
-                 attr(stk_temp, "catch_len") <- ibind(lapply(stk_list, function(x){
-                   attr(x, "catch_len")
-                 }))
-                 
-                 ### set name
-                 name(stk_temp) <- as.character(scenario)
-                 
-                 ### save
-                 saveRDS(stk_temp, file = paste0(path_res, "combined/", scenario, ".rds"))
-                 
-                 ### return stk
-                 return(stk_temp)
-                 
-               }
 
-### set names to scenario number
-names(res) <- scenarios
+### ------------------------------------------------------------------------ ###
+### extract refpts from OMs ####
+### ------------------------------------------------------------------------ ###
 
-### save stock list
-#res2 <- readRDS(file = paste0("output/perfect_knowledge/0_all.rds"))
-#res <- c(res2, res)
-#res <- res[order(as.numeric(names(res)))]
-#saveRDS(res, file = paste0("output/perfect_knowledge/0_all.rds"))
-#res <- readRDS(file = paste0("output/perfect_knowledge/0_all.rds"))
-
-
+# ### FLBRP refpts already exist
+# refpts <- readRDS("input/refpts.rds")
+# 
+# ### get stock names
+# stk_names <- names(refpts)
+# ### stock positions
+# stk_pos <- seq_along(stk_names)
+# stk_pos[stk_pos > 15] <- stk_pos[stk_pos > 15] + 15
+# 
+# ### extract & save refpts used in simulation
+# refpts_OM_error <- lapply(stk_pos, function(x){
+#   load(paste0("input/stocks/observation_error/", x, ".RData"))
+#   return(attr(stk, "refpts")[,,,,, 1])
+# })
+# names(refpts_OM_error) <- stk_names
+# saveRDS(refpts_OM_error, file = "input/refpts_OM_error.rds")
+# ### same without error model
+# refpts_OM_det <- lapply(stk_pos, function(x){
+#   load(paste0("input/stocks/perfect_knowledge//", x, ".RData"))
+#   return(attr(stk, "refpts")[,,,,, 1])
+# })
+# names(refpts_OM_det) <- stk_names
+# saveRDS(refpts_OM_det, file = "input/refpts_OM_det.rds")
 
 ### ------------------------------------------------------------------------ ###
 ### load results from all available (combined) scenarios ####
 ### ------------------------------------------------------------------------ ###
 ### get available files
-files <- list.files("output/perfect_knowledge/combined/")
-### get scenario numbers
-scenarios <- sort(unlist(lapply(files, function(x){
-  as.numeric(unlist(strsplit(x, split = "\\."))[1])
-})))
-### read results
-res <- foreach(scenario = scenarios) %dopar% {
-  readRDS(paste0("output/perfect_knowledge/combined/", scenario, ".rds"))
-}
-names(res) <- scenarios
+# files <- list.files("output/perfect_knowledge/combined/")
+# ### get scenario numbers
+# scenarios <- sort(unlist(lapply(files, function(x){
+#   as.numeric(unlist(strsplit(x, split = "\\."))[1])
+# })))
+# ### read results
+# res <- foreach(scenario = scenarios) %dopar% {
+#   readRDS(paste0("output/perfect_knowledge/combined/", scenario, ".rds"))
+# }
+# names(res) <- scenarios
 
 ### ------------------------------------------------------------------------ ###
 ### add results for 3.2.1 f:c, only first part available
@@ -212,28 +417,26 @@ scenarios <- sort(unlist(lapply(files, function(x){
 ### definition:
 ### SSB where recruitment is impaired by 30%
 
-BevHolt <- function(a, b, ssb) {
-  return(a * ssb / (b + ssb))
-}
-
-### calculate Blim
-Blim <- lapply(1:30, function(x){
-  (function(){
-    ### load input objects
-    load(paste0("input/stocks/", x, ".RData"))
-    
-    #params(sr.om)
-    
-    ### ssb from 0 to B0
-    ssbs <- seq(0, 1000, 0.01)
-    ### recruitment with Beverton & Holt
-    rec <- BevHolt(a = c(params(sr.om)["a"]), b = c(params(sr.om)["b"]),
-                   ssb = ssbs)
-    
-    ssbs[tail(which(rec <= c(max(rec) * 0.7)), 1)]
-    
-  })()
-})
+# BevHolt <- function(a, b, ssb) {
+#   return(a * ssb / (b + ssb))
+# }
+# 
+# ### calculate Blim
+# Blim <- lapply(1:30, function(x){
+#   (function(){
+#     ### load input objects
+#     load(paste0("input/stocks/", x, ".RData"))
+#     
+#     ### ssb from 0 to B0
+#     ssbs <- seq(0, 1000, 0.01)
+#     ### recruitment with Beverton & Holt
+#     rec <- BevHolt(a = c(params(sr.om)["a"]), b = c(params(sr.om)["b"]),
+#                    ssb = ssbs)
+#     
+#     ssbs[tail(which(rec <= c(max(rec) * 0.7)), 1)]
+#     
+#   })()
+# })
 
 ### 162.79 for all stocks
 
@@ -242,16 +445,8 @@ Blim <- lapply(1:30, function(x){
 ### ------------------------------------------------------------------------ ###
 B_lim <- 162.79
 
-# risks_blim <- lapply(seq_along(res), function(i){
-#   n_iter <- dim(res[[i]])[6]
-#   ### risks of falling below B_lim
-#   apply(ssb(res[[i]])[, ac(101:200)] < B_lim, c(2), function(x){
-#     length(which(x)) / n_iter
-#   })
-# })
-stats <- foreach(scenario = scenarios, .packages = "FLCore", .export = "B_lim") %dopar% {
-  #stats <- foreach(stk_tmp = res, .packages = "FLCore", .export = "B_lim") %dopar% {
-  #lapply(seq_along(res), function(i){
+stats <- foreach(scenario = scenarios, .packages = "FLCore",
+                 .export = "B_lim") %dopar% {
   ### load stk
   stk_tmp <- readRDS(paste0("output/perfect_knowledge/combined/", scenario, ".rds"))
   res_temp <- list()
@@ -314,7 +509,6 @@ res_df <- res_df[order(res_df$scenario), ]
 ### save
 saveRDS(res_df, file = "output/stats_scn.RDS")
 write.csv(res_df, file = "output/stats_scn.csv")
-#
 
 res_df <- readRDS("output/stats_scn.RDS")
 
@@ -474,11 +668,9 @@ plot_lst(res_df[res_df$options == "option_f:a option_r:b option_b:a MK:1.5" &
                   is.na(res_df$HCRmult) & is.na(res_df$upper_constraint), ],
          name = "3.2.1/noise_comb_f.a_r.b_roller-coaster")
 
-
 ### ------------------------------------------------------------------------ ###
 #### plotting ####
 ### ------------------------------------------------------------------------ ###
-
 
 ### plot all scenarios
 scenarios <- res_df$scenario[grepl(pattern = "^option_r\\:*", x = res_df$options)]
@@ -578,7 +770,7 @@ plot_factor <- function(scenarios, names, res_path = NULL, save = FALSE,
                  linetype = "dotted")
   }
   
-  if (mult_stk){
+  if (mult_stk) {
     p <- p + geom_line(aes(colour = stock))
     if (!isTRUE(median)) {
       p <- p +
@@ -612,7 +804,7 @@ plot_factor <- function(scenarios, names, res_path = NULL, save = FALSE,
   #                                 y = 1))
   
   ### save
-  if (isTRUE(save)){
+  if (isTRUE(save)) {
     ggsave(filename = paste0(res_path, file_name, ".png"), plot = p,
            width = 30, height = 20, units = "cm", dpi = 300, type = "cairo-png")
   } else {
@@ -2717,62 +2909,62 @@ res <- readRDS("output/quants_1_6804.rds")
 stats <- foreach(scenario = res, .packages = "FLCore",
                  .export = "B_lim") %dopar% {
                    
-                   ### list for storing results
-                   res_temp <- list()
-                   ### number of iterations for current scenario
-                   n_iter <- dim(scenario[[1]])[6]
-                   
-                   ### proportion where SSB was below B_lim
-                   res_temp$ssb_below_blim_total_old <-
-                     sum(scenario$ssb_old[, ac(101:200)] < B_lim) / (n_iter*100)
-                   ### proportion of iterations where SSB dropped below B_lim
-                   res_temp$ssb_below_blim_iter_old <-
-                     sum(yearSums(scenario$ssb_old[, ac(101:200)] < B_lim) > 0) / n_iter
-                   
-                   ### stock collapse = ssb < 1
-                   res_temp$collapse_total_old <-
-                     sum(scenario$ssb_old[, ac(100:200)] < 1) / (n_iter*100)
-                   ### proportion of iterations with collapse
-                   res_temp$collapse_iter_old <-
-                     sum(yearSums(scenario$ssb_old[, ac(101:200)] < 1) > 0) / n_iter
-                   
-                   # ### how frequently is max F reached?
-                   # res_temp$fmaxed_total <- sum(fbar(stk_tmp)[, ac(101:200)] == 5) / (n_iter*100)
-                   # ### in how many iterations did this happen?
-                   # res_temp$fmaxed_iter <- sum(yearSums(fbar(stk_tmp)[, ac(101:200)] == 5) > 0)/
-                   #   n_iter
-                   
-                   ### yield
-                   res_temp$yield_old <- mean(scenario$catch_old[,ac(101:200)])
-                   res_temp$rel_yield_old <- mean(scenario$catch_old[,ac(101:200)]) /
-                     mean(scenario$catch_old[,ac(75:100)])
-                   
-                   ### same but for "corrected" quants
-                   ### proportion where SSB was below B_lim
-                   res_temp$ssb_below_blim_total <-
-                     sum(scenario$ssb[, ac(101:200)] < B_lim) / (n_iter*100)
-                   ### proportion of iterations where SSB dropped below B_lim
-                   res_temp$ssb_below_blim_iter <-
-                     sum(yearSums(scenario$ssb[, ac(101:200)] < B_lim) > 0) / n_iter
-                   
-                   ### stock collapse = ssb < 1
-                   res_temp$collapse_total <-
-                     sum(scenario$ssb[, ac(100:200)] < 1) / (n_iter*100)
-                   ### proportion of iterations with collapse
-                   res_temp$collapse_iter <-
-                     sum(yearSums(scenario$ssb[, ac(101:200)] < 1) > 0) / n_iter
-                   
-                   ### yield
-                   res_temp$yield <- mean(scenario$catch[,ac(101:200)])
-                   res_temp$rel_yield <- median(apply(scenario$catch[, ac(101:200)], 6, mean) /
-                                                  apply(scenario$catch[, ac(75:100)], 6, mean))
-                   
-                   ### scenario definition
-                   #res_temp$scenario <- names(res)[i]
-                   
-                   return(as.data.frame(res_temp))
-                   
-                 }
+  ### list for storing results
+  res_temp <- list()
+  ### number of iterations for current scenario
+  n_iter <- dim(scenario[[1]])[6]
+  
+  ### proportion where SSB was below B_lim
+  res_temp$ssb_below_blim_total_old <-
+   sum(scenario$ssb_old[, ac(101:200)] < B_lim) / (n_iter*100)
+  ### proportion of iterations where SSB dropped below B_lim
+  res_temp$ssb_below_blim_iter_old <-
+   sum(yearSums(scenario$ssb_old[, ac(101:200)] < B_lim) > 0) / n_iter
+  
+  ### stock collapse = ssb < 1
+  res_temp$collapse_total_old <-
+   sum(scenario$ssb_old[, ac(100:200)] < 1) / (n_iter*100)
+  ### proportion of iterations with collapse
+  res_temp$collapse_iter_old <-
+   sum(yearSums(scenario$ssb_old[, ac(101:200)] < 1) > 0) / n_iter
+  
+  # ### how frequently is max F reached?
+  # res_temp$fmaxed_total <- sum(fbar(stk_tmp)[, ac(101:200)] == 5) / (n_iter*100)
+  # ### in how many iterations did this happen?
+  # res_temp$fmaxed_iter <- sum(yearSums(fbar(stk_tmp)[, ac(101:200)] == 5) > 0)/
+  #   n_iter
+  
+  ### yield
+  res_temp$yield_old <- mean(scenario$catch_old[,ac(101:200)])
+  res_temp$rel_yield_old <- mean(scenario$catch_old[,ac(101:200)]) /
+   mean(scenario$catch_old[,ac(75:100)])
+  
+  ### same but for "corrected" quants
+  ### proportion where SSB was below B_lim
+  res_temp$ssb_below_blim_total <-
+   sum(scenario$ssb[, ac(101:200)] < B_lim) / (n_iter*100)
+  ### proportion of iterations where SSB dropped below B_lim
+  res_temp$ssb_below_blim_iter <-
+   sum(yearSums(scenario$ssb[, ac(101:200)] < B_lim) > 0) / n_iter
+  
+  ### stock collapse = ssb < 1
+  res_temp$collapse_total <-
+   sum(scenario$ssb[, ac(100:200)] < 1) / (n_iter*100)
+  ### proportion of iterations with collapse
+  res_temp$collapse_iter <-
+   sum(yearSums(scenario$ssb[, ac(101:200)] < 1) > 0) / n_iter
+  
+  ### yield
+  res_temp$yield <- mean(scenario$catch[,ac(101:200)])
+  res_temp$rel_yield <- median(apply(scenario$catch[, ac(101:200)], 6, mean) /
+                                apply(scenario$catch[, ac(75:100)], 6, mean))
+  
+  ### scenario definition
+  #res_temp$scenario <- names(res)[i]
+  
+  return(as.data.frame(res_temp))
+  
+}
 
 
 stats <- do.call(rbind, stats)
@@ -3301,6 +3493,10 @@ ggplot(data = pars_df, aes(x = stock, y = length, fill = method)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "correlations/length_ref_comparison.png"),
+       width = 20, height = 15, units = "cm", dpi = 300,
+       type = "cairo-png")
 
 ### correlate with risks
 ### subset to default settings
@@ -3380,6 +3576,7 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
 ### load stocks and stats
 res_df <- readRDS("output/stats_scn_new.RDS") ### quants
 quants <- readRDS("output/quants_3.2.1_default.rds") ### stats
+
 ### stocks
 stocks <- foreach(stock = 6515:6572) %dopar% {
   # readRDS(paste0("D:/WKLIFEVII/github/wklifeVII/R/output/perfect_knowledge",
@@ -3485,6 +3682,14 @@ cor_stats <- foreach(stock = stocks, quant = quants,
   # ff <- stock@tracking[c("HCR3.2.1f"), ,,,, ]
   # fb <- stock@tracking[c("HCR3.2.1b"), ,,,, ]
   
+  ### remove years after collapse
+  ### (defined as SSB<1 after hitting F=5)
+  ### replace with NAs
+  vals <- lapply(vals, function(x){
+    x@.Data[quant$ssb@.Data == 0] <- NA
+    return(x)
+  })
+  
   ### contribution to total deviation from 1
   vals_1 <- lapply(vals, function(x) abs(x - 1)) ### difference from 1
   vals_sum <- vals_1$r + vals_1$f + vals_1$b ### sum of differences
@@ -3496,10 +3701,10 @@ cor_stats <- foreach(stock = stocks, quant = quants,
   ### remove years after collapse
   ### (defined as SSB<1 after hitting F=5)
   ### replace with NAs
-  contr <- lapply(contr, function(x){
-   x@.Data[quant$ssb@.Data == 0] <- NA
-   return(x)
-  })
+  # contr <- lapply(contr, function(x){
+  #  x@.Data[quant$ssb@.Data == 0] <- NA
+  #  return(x)
+  # })
   # cr@.Data[quant$ssb@.Data == 0] <- NA
   # cf@.Data[quant$ssb@.Data == 0] <- NA
   # cb@.Data[quant$ssb@.Data == 0] <- NA
@@ -3509,18 +3714,48 @@ cor_stats <- foreach(stock = stocks, quant = quants,
   ### median over iterations
   contr_median <- lapply(contr_mean, iterMedians)
   
-  return(unlist(contr_median))
+  ### factor = r * f * b
+  ### remove one, calculate factor, calculate sum of squares
+  factor <- vals$r * vals$f * vals$b
+  ### models
+  factor_rf <- vals$r * vals$f
+  factor_rb <- vals$r * vals$b
+  factor_fb <- vals$f * vals$b
+  ### sum of squares, median of that
+  SS_rf <- iterMedians(apply((factor - factor_rf)^2, 6, sum, na.rm = TRUE))
+  SS_rb <- iterMedians(apply((factor - factor_rb)^2, 6, sum, na.rm = TRUE))
+  SS_fb <- iterMedians(apply((factor - factor_fb)^2, 6, sum, na.rm = TRUE))
+
+  return(c(unlist(contr_median), SS_b = SS_rf, SS_f = SS_rb, SS_r = SS_fb,
+           SS_b_rel = SS_rf/(SS_rf + SS_rb + SS_fb),
+           SS_f_rel = SS_rb/(SS_rf + SS_rb + SS_fb),
+           SS_r_rel = SS_fb/(SS_rf + SS_rb + SS_fb)))
   
 }
 
 ### add results to stats
 stats_HCR <- res_df[res_df$scenario %in% 6515:6572, ]
 stats_HCR <- cbind(stats_HCR, cor_stats)
+### add short stock names
+stats_HCR <- merge(stats_HCR, read.csv("input/names_short.csv", as.is = TRUE))
 
 ### plot contribution split by component for all stocks
 df_plot <- gather(data = stats_HCR, key = "component", value = "value",
                   r, f, b)
-ggplot(df_plot, aes(x = stock, y = value, fill = component)) +
+ggplot(df_plot, aes(x = short, y = value, fill = component)) +
+  geom_bar(stat = "identity", position = "fill") +
+  facet_wrap(~ fhist) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.2)) +
+  labs(y = "contribution of components to catch advice")
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                         "correlations/catch_rule_contributions.png"),
+       width = 20, height = 12, units = "cm", dpi = 300, type = "cairo-png")
+
+### plot SSs
+df_plot <- gather(data = stats_HCR, key = "component", value = "value",
+                  SS_r, SS_b, SS_f)
+ggplot(df_plot, aes(x = short, y = value, fill = component)) +
   geom_bar(stat = "identity", position = "fill") +
   facet_wrap(~ fhist) +
   theme_bw() +
@@ -3564,9 +3799,11 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/correlations/",
        width = 20, height = 12, units = "cm", dpi = 300, type = "cairo-png")
 
 ### ------------------------------------------------------------------------ ###
-### 3.2.1 default - recreate full corrected time series
+### 3.2.1 default - recreate full corrected time series ####
+### plot stock dynamics and catch rule components
 ### ------------------------------------------------------------------------ ###
 
+### functions for arithmetic operations with FLPar & FLQuant
 `%FLQuant+FLPar%` <- function(e1, e2) {
   res <- e1
   for (yr in dimnames(e1)$year) res[, yr] <- res[, yr] + e2
@@ -3583,14 +3820,24 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/correlations/",
   res
 }
 
+### load stats & refpts
+res_df <- readRDS("output/stats_scn_new.RDS") ### quants
+#res_df_ <- res_df[res_df$scenario %in% 6515:6572, ]
+### FLBRP reference points
+refpts <- readRDS("input/refpts.rds")
+### extract MSY length
+refpts_OM <- readRDS("input/refpts_OM_det.rds")
+Lmsy <- lapply(refpts_OM, function(x) median(c(x["LFeFmsy"])))
 
-res <- foreach(scenario = 6515:6516, .packages = "FLCore",
+scenarios <- 1237:4484#c(6515:6572)#res_df_$scenario
+
+res <- foreach(scenario = scenarios, .packages = "FLCore",
                .errorhandling = "pass") %dopar% {
-  
+  #browser()
   ### load data
-  # stock <- readRDS(paste0("output/perfect_knowledge/combined/", scenario, 
+  # stock <- readRDS(paste0("output/perfect_knowledge/combined/", scenario,
   #                         ".rds"))
-  stock <- readRDS(paste0("output/combined/", scenario, 
+  stock <- readRDS(paste0("/gpfs/afmcefas/simonf/output/combined/", scenario,
                           ".rds"))
 
   ### calculate component f for historical period
@@ -3672,9 +3919,529 @@ res <- foreach(scenario = 6515:6516, .packages = "FLCore",
   })
   
   ### save 
-  # saveRDS(res, file = paste0("output/perfect_knowledge/combined/3.2.1_quants/",
+  #saveRDS(res, file = paste0("output/perfect_knowledge/combined/3.2.1_quants/",
   #                            scenario, ".rds"))
-  saveRDS(res, file = paste0("output/combined/3.2.1_quants/",
-                             scenario, ".rds"))
+  saveRDS(res, file = paste0("/gpfs/afmcefas/simonf/output/combined/",
+                             "3.2.1_quants/", scenario, ".rds"))
 
 }
+library(tidyr)
+### plot stock dynamics and catch rule components
+. <- foreach(scenario = scenarios, .packages = c("FLCore", "tidyr", "ggplot2"),
+             .export = c("refpts", "Lmsy", "res_df")) %dopar% {
+  ### load quants
+  quants <- readRDS(paste0("output/perfect_knowledge/combined/3.2.1_quants/",
+                           scenario, ".rds"))
+  
+  ### calculate percentiles
+  quants_perc <- lapply(quants, function(x) {
+    quantile(x, c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE)
+  })
+  
+  ### coerce into data frame
+  quants_df <- as.data.frame(quants_perc)
+  
+  ### format for plotting
+  quants_df <- spread(data = quants_df, iter, data)
+  
+  ### reference lines
+  stk_name <- ac(res_df$stock[res_df$scenario == scenario])
+  df_refs <- data.frame(qname = c("HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b",
+                                  "SSB", "fbar", "Catch", "Rec", "Lmean"),
+                        value = c(rep(1, 3),
+                                  refpts[[stk_name]]["msy", "ssb"],
+                                  refpts[[stk_name]]["msy", "harvest"],
+                                  refpts[[stk_name]]["msy", "yield"],
+                                  refpts[[stk_name]]["msy", "rec"],
+                                  Lmsy[[stk_name]]))
+  
+  p <- ggplot(data = quants_df, aes(x = year, y = `50%`)) +
+    geom_vline(xintercept = 100, colour = "grey") +
+    geom_hline(data = df_refs, aes(yintercept = value), lty = "dashed") +
+    geom_ribbon(aes(ymin = `5%`, ymax = `95%`), alpha = 0.2) +
+    geom_ribbon(aes(ymin = `25%`, ymax = `75%`), alpha = 0.3) +
+    geom_line() +
+    facet_wrap(~ qname, scales = "free_y") +
+    theme_bw() +
+    ylim(0, NA) +
+    labs(y = "")
+  
+  ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/all/",
+                           scenario, "_", stk_name, ".png"),
+         width = 20, height = 12, units = "cm", dpi = 300, type = "cairo-png",
+         plot = p)
+  
+  ### include individual iterations
+  p2 <- p + geom_line(data = as.data.frame(quants), aes(y = data, group = iter),
+                      alpha = 0.1, size = 0.2, colour = "red")
+  ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/all/",
+                           "iterations/", scenario, "_", stk_name, ".png"),
+         width = 20, height = 12, units = "cm", dpi = 300, type = "cairo-png",
+         plot = p2)
+  
+}
+
+
+### plot 4plot with medians for all stocks
+df_qts <- foreach(scenario = 6515:6572, .packages = c("FLCore"), 
+             .export = c("res_df")) %dopar% {
+  ### load quants
+  qts <- readRDS(paste0("output/perfect_knowledge/combined/3.2.1_quants/",
+                        scenario, ".rds"))[1:4]
+  qts <- lapply(qts, iterMedians) ### median over all iterations
+  ### coerce into data frame
+  df_tmp <- as.data.frame(qts)
+  ### add scenario definitions
+  scn <- res_df[res_df$scenario == scenario, ]
+  df_tmp <- cbind(df_tmp, fhist = scn$fhist, scenario = scenario,
+                  stock = scn$stock)
+  return(df_tmp)
+}
+df_qts <- do.call(rbind, df_qts)
+### plot
+ggplot(data = df_qts, aes(x = year, y = data, colour = stock)) +
+  geom_line(size = 0.3) + geom_vline(xintercept = 100) + 
+  theme_bw() +
+  facet_grid(qname ~ fhist, scales = "free_y") +
+  labs(y = "") +
+  scale_colour_discrete(guide = FALSE)
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/correlations",
+                         "/default_4plot.png"),
+       width = 20, height = 12, units = "cm", dpi = 300, type = "cairo-png")
+
+### plot SSB for all stocks
+df_ssb <- foreach(scenario = 6515:6572, .packages = c("FLCore"), 
+                  .export = c("res_df")) %dopar% {
+  ### load quants
+  qts <- readRDS(paste0("output/perfect_knowledge/combined/3.2.1_quants/",
+                        scenario, ".rds"))[["SSB"]]
+  qts <- iterMedians(qts) ### median over all iterations
+  ### coerce into data frame
+  df_tmp <- as.data.frame(qts)
+  ### add scenario definitions
+  scn <- res_df[res_df$scenario == scenario, ]
+  df_tmp <- cbind(df_tmp, fhist = scn$fhist, scenario = scenario,
+                  stock = scn$stock)
+  return(df_tmp)
+}
+df_ssb <- do.call(rbind, df_ssb)
+### retrieve BMSY
+refpts_ssb <- lapply(refpts, function(x) {
+  c(x["msy", "ssb"])
+})
+refpts_ssb <- as.data.frame(do.call(rbind, refpts_ssb))
+refpts_ssb$stock <- row.names(refpts_ssb)
+row.names(refpts_ssb) <- NULL
+names(refpts_ssb)[1] <- "BMSY"
+### plot
+ggplot(data = df_ssb[df_ssb$fhist == "one-way", ], aes(x = year, y = data)) +
+  geom_vline(xintercept = 100, colour = "grey") + geom_line(size = 0.3) +
+  geom_hline(data = refpts_ssb, aes(yintercept = BMSY)) + 
+  theme_bw() +
+  facet_wrap("stock", scales = "free_y") +
+  labs(y = "") +
+  scale_colour_discrete(guide = FALSE)
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/correlations",
+                         "/default_ssb_all_stocks.png"),
+       width = 30, height = 18, units = "cm", dpi = 300, type = "cairo-png")
+
+### plot SSB one-way in single plot
+ggplot(data = df_ssb,
+       aes(x = year, y = data, group = stock)) +
+  geom_vline(xintercept = 100, colour = "grey") + geom_line(size = 0.3) + 
+  theme_bw() + facet_wrap(~ fhist, nrow = 2) +
+  labs(y = "Spawning Stock Biomass", x = "year") +
+  scale_colour_discrete(guide = FALSE)
+ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/correlations",
+                         "/default_ssb_all_stocks_oneplot.png"),
+       width = 10, height = 12, units = "cm", dpi = 300, type = "cairo-png")
+
+# stk_tmp <- readRDS("output/perfect_knowledge/combined/6516.rds")
+# quant_tmp <- readRDS("output/perfect_knowledge/combined/3.2.1_quants/6516.rds")
+# plot(quant_tmp, iter = 1:5)
+
+
+
+### ------------------------------------------------------------------------ ###
+### 3.2.1 all stocks - constraints - 4plots ####
+### ------------------------------------------------------------------------ ###
+### load stats & refpts
+res_df <- readRDS("output/stats_scn_new.RDS") ### quants
+refpts <- readRDS("input/refpts.rds")
+### extract MSY length
+refpts_OM <- readRDS("input/refpts_OM_det.rds")
+Lmsy <- lapply(refpts_OM, function(x) median(c(x["LFeFmsy"])))
+
+### load scenario results
+scenarios <- 1237:4484
+df_tmp <- res_df[res_df$scenario %in% scenarios, ]
+
+### loop through stocks
+for (stk_pos in unique(df_plot$stk_pos)) {
+  
+  ### find required scenarios for current stocks
+  scns_tmp <- df_tmp$scenario[df_tmp$stk_pos == stk_pos]
+  ### load quants for all scenarios
+  qts <- lapply(scns_tmp, function(scenario) {
+    ### read
+    qts_tmp <- readRDS(paste0("output/perfect_knowledge/combined/3.2.1_quants/",
+                              scenario, ".rds"))
+    ### extract percentiles
+    qts_tmp <- lapply(qts_tmp, function(x) {
+      quantile(x, c(0.05, 0.5, 0.95), na.rm = TRUE)
+    })
+    ### coerce into data frame
+    cbind(as.data.frame(qts_tmp),
+          scenario = scenario, 
+          fhist = res_df$fhist[res_df$scenario == scenario],
+          lower_limit = res_df$lower_constraint[res_df$scenario == scenario],
+          upper_limit = res_df$upper_constraint[res_df$scenario == scenario]
+          )
+  })
+  qts <- do.call(rbind, qts)
+  qts$lower_limit <- as.factor(qts$lower_limit)
+  qts$upper_limit <- as.factor(qts$upper_limit)
+  qts$iter <- as.factor(qts$iter)
+  
+  ### reference points / lines
+  ### reference lines
+  stk_name <- ac(res_df$stock[res_df$scenario == scns_tmp[1]])
+  df_refs <- data.frame(qname = c("HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b",
+                                  "SSB", "fbar", "Catch", "Rec", "Lmean"),
+                        value = c(rep(1, 3),
+                                  refpts[[stk_name]]["msy", "ssb"],
+                                  refpts[[stk_name]]["msy", "harvest"],
+                                  refpts[[stk_name]]["msy", "yield"],
+                                  refpts[[stk_name]]["msy", "rec"],
+                                  Lmsy[[stk_name]]))
+  
+  ### plot with lower limit as basis
+  . <- foreach(lower_limit = unique(qts$lower_limit), 
+           .packages = "ggplot2") %dopar% {
+    p <- ggplot(qts[qts$lower_limit == lower_limit, ],
+           aes(x = year, y = data, colour = upper_limit, 
+               linetype = iter, alpha = iter)) +
+      geom_vline(xintercept = 100, colour = "grey") +
+      geom_hline(data = df_refs, aes(yintercept = value), lty = "dashed") +
+      geom_line() +
+      facet_wrap(~ qname, scales = "free_y") +
+      scale_linetype_manual("percentile",
+                            values = c("dashed", "solid", "dashed")) +
+      scale_alpha_manual("percentile", values = c(0.5, 1, 0.5)) +
+      scale_colour_discrete("upper\nlimit") +
+      theme_bw() +
+      ylim(0, NA) +
+      labs(x = "year", y = "", title = 
+           paste0(df_tmp$fhist[df_tmp$stk_pos == stk_pos][1], ", ",
+                 df_tmp$stock[df_tmp$stk_pos == stk_pos][1], ", ",
+                 "lower limit = ", 
+                 as.character(format(as.numeric(lower_limit)), nsmall = 2)))
+    ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/constraints",
+                             "/stock_plots/", 
+                             df_tmp$fhist[df_tmp$stk_pos == stk_pos][1], "_",
+                             df_tmp$stock[df_tmp$stk_pos == stk_pos][1], "_",
+                             "lower", 
+                             format(as.numeric(as.character(lower_limit)), 
+                                    nsmall = 2), 
+                             ".png"),
+           width = 30, height = 18, units = "cm", dpi = 300, type = "cairo-png",
+           plot = p)
+  }
+  ## plot with upper limit as basis
+  . <- foreach(upper_limit = unique(qts$upper_limit),
+               .packages = "ggplot2") %dopar% {
+    p <- ggplot(qts[qts$upper_limit == upper_limit, ],
+                aes(x = year, y = data, colour = lower_limit,
+                    linetype = iter, alpha = iter)) +
+      geom_vline(xintercept = 100, colour = "grey") +
+      geom_hline(data = df_refs, aes(yintercept = value), lty = "dashed") +
+      geom_line() +
+      facet_wrap(~ qname, scales = "free_y") +
+      scale_linetype_manual("percentile",
+                            values = c("dashed", "solid", "dashed")) +
+      scale_alpha_manual("percentile", values = c(0.5, 1, 0.5)) +
+      scale_colour_discrete("lower\nlimit") +
+      theme_bw() +
+      ylim(0, NA) +
+      labs(x = "year", y = "", title =
+           paste0(df_tmp$fhist[df_tmp$stk_pos == stk_pos][1], ", ",
+                  df_tmp$stock[df_tmp$stk_pos == stk_pos][1], ", ",
+                  "upper limit = ",
+                  format(as.numeric(as.character(upper_limit)), nsmall = 2)))
+    ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/constraints",
+                             "/stock_plots/",
+                             df_tmp$fhist[df_tmp$stk_pos == stk_pos][1], "_",
+                             df_tmp$stock[df_tmp$stk_pos == stk_pos][1], "_",
+                             "upper",
+                             format(as.numeric(as.character(upper_limit)),
+                                    nsmall = 2),
+                             ".png"),
+           width = 30, height = 18, units = "cm", dpi = 300, type = "cairo-png",
+           plot = p)
+  }
+}
+
+### ------------------------------------------------------------------------ ###
+### 3.2.1 all stocks - multiplier & exponent - 4plots ####
+### ------------------------------------------------------------------------ ###
+
+### load scenario results
+scenarios <- 4485:6804
+df_tmp <- res_df[res_df$scenario %in% scenarios, ]
+
+### loop through stocks
+for (stk_pos in unique(df_plot$stk_pos)) {
+  
+  ### find required scenarios for current stocks
+  scns_tmp <- df_tmp$scenario[df_tmp$stk_pos == stk_pos]
+  ### load quants for all scenarios
+  qts <- lapply(scns_tmp, function(scenario) {
+    ### read
+    qts_tmp <- readRDS(paste0("output/perfect_knowledge/combined/3.2.1_quants/",
+                              scenario, ".rds"))
+    ### extract percentiles
+    qts_tmp <- lapply(qts_tmp, function(x) {
+      quantile(x, c(0.05, 0.5, 0.95), na.rm = TRUE)
+    })
+    ### coerce into data frame
+    cbind(as.data.frame(qts_tmp),
+          scenario = scenario, 
+          fhist = res_df$fhist[res_df$scenario == scenario],
+          HCRmult = res_df$HCRmult[res_df$scenario == scenario],
+          b_z = res_df$b_z[res_df$scenario == scenario]
+    )
+  })
+  qts <- do.call(rbind, qts)
+  qts$HCRmult <- as.factor(qts$HCRmult)
+  qts$b_z <- as.factor(qts$b_z)
+  qts$iter <- as.factor(qts$iter)
+  levels(qts$iter) <- c("95%", "50%", "5%")
+  
+  ### reference points / lines
+  ### reference lines
+  stk_name <- ac(res_df$stock[res_df$scenario == scns_tmp[1]])
+  df_refs <- data.frame(qname = c("HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b",
+                                  "SSB", "fbar", "Catch", "Rec", "Lmean"),
+                        value = c(rep(1, 3),
+                                  refpts[[stk_name]]["msy", "ssb"],
+                                  refpts[[stk_name]]["msy", "harvest"],
+                                  refpts[[stk_name]]["msy", "yield"],
+                                  refpts[[stk_name]]["msy", "rec"],
+                                  Lmsy[[stk_name]]))
+  
+  ### plot with HCRmult as basis
+  . <- foreach(HCRmult = unique(qts$HCRmult), 
+               .packages = "ggplot2") %dopar% {
+  p <- ggplot(qts[qts$HCRmult == HCRmult, ],
+             aes(x = year, y = data, colour = b_z, 
+                 linetype = iter, alpha = iter)) +
+   geom_vline(xintercept = 100, colour = "grey") +
+   geom_hline(data = df_refs, aes(yintercept = value), lty = "dashed") +
+   geom_line() +
+   facet_wrap(~ qname, scales = "free_y") +
+   scale_linetype_manual("percentile",
+                         values = c("dashed", "solid", "dashed")) +
+   scale_alpha_manual("percentile", values = c(0.5, 1, 0.5)) +
+   scale_colour_discrete("b_z") +
+   theme_bw() +
+   ylim(0, NA) +
+   labs(x = "year", y = "", title = 
+          paste0(df_tmp$fhist[df_tmp$stk_pos == stk_pos][1], ", ",
+                 df_tmp$stock[df_tmp$stk_pos == stk_pos][1], ", ",
+                 "HCRmult = ", 
+                 format(as.numeric(as.character(HCRmult)), nsmall = 2)))
+  ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                          "multiplier_exponent/stock_plots/", 
+                          df_tmp$fhist[df_tmp$stk_pos == stk_pos][1], "_",
+                          df_tmp$stock[df_tmp$stk_pos == stk_pos][1], "_",
+                          "HCRmult", 
+                          format(as.numeric(as.character(HCRmult)), 
+                                 nsmall = 2), 
+                          ".png"),
+        width = 30, height = 18, units = "cm", dpi = 300, type = "cairo-png",
+        plot = p)
+  }
+  ## plot with b_z as basis
+  . <- foreach(b_z = unique(qts$b_z), 
+               .packages = "ggplot2") %dopar% {
+    p <- ggplot(qts[qts$b_z == b_z, ],
+               aes(x = year, y = data, colour = HCRmult, 
+                   linetype = iter, alpha = iter)) +
+     geom_vline(xintercept = 100, colour = "grey") +
+     geom_hline(data = df_refs, aes(yintercept = value), lty = "dashed") +
+     geom_line() +
+     facet_wrap(~ qname, scales = "free_y") +
+     scale_linetype_manual("percentile",
+                           values = c("dashed", "solid", "dashed")) +
+     scale_alpha_manual("percentile", values = c(0.5, 1, 0.5)) +
+     scale_colour_discrete("HCRmult") +
+     theme_bw() +
+     ylim(0, NA) +
+     labs(x = "year", y = "", title = 
+            paste0(df_tmp$fhist[df_tmp$stk_pos == stk_pos][1], ", ",
+                   df_tmp$stock[df_tmp$stk_pos == stk_pos][1], ", ",
+                   "b_z = ", 
+                   format(as.numeric(as.character(b_z)), nsmall = 2)))
+    ggsave(filename = paste0("output/perfect_knowledge/plots/3.2.1/",
+                            "multiplier_exponent/stock_plots/", 
+                            df_tmp$fhist[df_tmp$stk_pos == stk_pos][1], "_",
+                            df_tmp$stock[df_tmp$stk_pos == stk_pos][1], "_",
+                            "b_z", 
+                            format(as.numeric(as.character(b_z)), 
+                                   nsmall = 2), 
+                            ".png"),
+          width = 30, height = 18, units = "cm", dpi = 300, type = "cairo-png",
+          plot = p)
+  }
+}
+
+### ------------------------------------------------------------------------ ###
+### more stats ####
+### yield vs yield achieved when fished at Fmsy
+### inter-annual variation
+### F/Fmsy, B/Bmsy
+### ------------------------------------------------------------------------ ###
+### reference points
+refpts <- readRDS("input/refpts.rds")
+
+### get sorted: find corresponding stk_pos and stock names
+# stk_names <- names(readRDS("input/stock_list.rds"))
+# stks_pos_names <- data.frame(stock = stk_names, stk_pos = 1:58)
+# write.csv(x = stks_pos_names, file = "input/stock_names_pos.csv", 
+#           row.names = FALSE)
+stks_pos_names <- read.csv(file = "input/stock_names_pos.csv", as.is = TRUE)
+
+### first fish stocks at Fmsy for entire simulation period & calculate catch
+### go through all stocks
+res <- foreach(stk_pos = stks_pos_names$stk_pos, 
+               refpts_stk = refpts[stks_pos_names$stock],
+               .packages = c("FLash"), .errorhandling = "pass") %dopar% {
+                 # if (stk_pos > 2) stop()
+  #browser()
+  ### load OM
+  load(paste0("input/stocks/observation_error/", stk_pos, ".RData"))
+  
+  ### fish at FMSY
+  ctrl <- fwdControl(data.frame(year = 101:200, 
+                               quantity = "f",
+                               val = c(refpts_stk["msy", "harvest"])))
+  stk_fwd <- fwd(stk, ctrl = ctrl, sr = sr.om, sr.residuals = sr.om.res,
+                sr.residuals.mult = TRUE, maxF = 5)
+  
+  ### sum catch over projection period per iter
+  catch <- apply(window(catch(stk_fwd), start = 101), 6, sum)
+  ### sum up SSB
+  ssb <- apply(window(ssb(stk_fwd), start = 101), 6, sum)
+  
+  return(list(catch = catch, ssb = ssb))
+
+}
+names(res) <- stks_pos_names$stock
+
+### separate catch and ssb
+res_catch <- lapply(res, "[[", "catch")
+res_ssb <- lapply(res, "[[", "ssb")
+### save them
+saveRDS(object = res_catch, file = "input/all_stocks_catch_at_Fmsy.rds")
+saveRDS(object = res_ssb, file = "input/all_stocks_ssb_at_Fmsy.rds")
+res_catch <- readRDS("input/all_stocks_catch_at_Fmsy.rds")
+res_ssb <- readRDS("input/all_stocks_ssb_at_Fmsy.rds")
+
+### select scenarios to calculate yield
+scns_stats <- 1237:6804
+
+### load stats calculated earlier
+res_df <- readRDS("output/stats_scn_new.RDS")
+
+### life-history parameters & refpts
+lhist <- readRDS("input/lhist_extended.rds")
+
+res_df_tmp <- res_df[res_df$scenario %in% scns_stats, ]
+#res_df_tmp <- res_df_tmp[1:100, ]
+
+### loop through scenarios
+res_tmp <- foreach(scenario = res_df_tmp$scenario, 
+  pars = split(lhist[match(ac(res_df_tmp$stock), lhist$stock), ], 
+                                1:nrow(res_df_tmp)),
+  catch_msy = res_catch[res_df_tmp$stk_pos],
+  ssb_msy = res_ssb[res_df_tmp$stk_pos],
+                   .packages = "FLCore",
+                   .errorhandling = "stop") %dopar% {
+                     
+  #browser()
+  ### load quants
+  # tmp <- readRDS(paste0("output/perfect_knowledge/combined/3.2.1_quants/",
+  #                      scenario, ".rds"))
+  tmp <- readRDS(paste0("/gpfs/afmcefas/simonf/output/combined/3.2.1_quants/",
+                        scenario, ".rds"))
+  
+  ### load summary
+  # stk <- readRDS(paste0("output/perfect_knowledge/combined/",
+  #                      scenario, ".rds"))
+  stk <- readRDS(paste0("/gpfs/afmcefas/simonf/output/combined/",
+                        scenario, ".rds"))
+  
+  ### replace 0 catch in case SSB is 0, i.e. stock collapsed
+  ### otherwise would imply stability
+  catch <- tmp$Catch
+  catch@.Data[which(tmp$SSB == 0)] <- NA
+  
+  variability <- iav(object = catch, period = 2, start = 99, 
+                    summary_per_iter = mean, summary = NULL)
+  
+  ### F / Fmsy
+  f_rel <- tmp$fbar / pars$fmsy
+  ### B / Bmsy
+  ssb_rel <- tmp$SSB / pars$bmsy
+  
+  ### average per iteration, median of that
+  f_rel <- apply(f_rel, 6, mean, na.rm = TRUE)
+    #apply(apply(f_rel, 6, mean, na.rm = TRUE), 1:2, median, na.rm = TRUE)
+  
+  ssb_rel <- apply(ssb_rel, 6, mean, na.rm = TRUE)
+    #apply(apply(ssb_rel, 6, mean, na.rm = TRUE), 1:2, 
+    #              median, na.rm = TRUE)
+  
+  ### catch & SSB relative to when fished at MSY
+  ### load stock/quants from MSE simulation
+  catch_MSE <- tmp$Catch
+  catch_MSE <- apply(window(catch_MSE, start = 101), 6, sum)
+  ssb_MSE <- tmp$SSB
+  ssb_MSE <- apply(window(ssb_MSE, start = 101), 6, sum)
+  
+  ### calculate relative values
+  catch_MSY_prop <- catch_MSE / catch_msy
+  ssb_MSY_prop <- ssb_MSE / ssb_msy
+  
+  ### recalculate risks and keep iterations
+  ssb <- window(tmp$SSB, start = 101)
+  collapse <- apply(ssb, c(1, 6), function(x) {
+    sum(x < 1)/100
+  })
+  
+  return(list(iav = variability, f_rel = f_rel, ssb_rel = ssb_rel,
+              catch_MSY_prop = catch_MSY_prop, ssb_MSY_prop = ssb_MSY_prop,
+              collapse_risk = collapse))
+  
+}
+names(res_tmp) <- res_df_tmp$scenario
+### save results with iterations
+saveRDS(object = res_tmp, file = "output/1237_6804_stats_iter.rds")
+res_tmp <- readRDS(file = "output/1237_6804_stats_iter.rds")
+
+### extract medians
+res_tmp2 <- foreach(tmp = res_tmp, .packages = "FLCore",
+                   .errorhandling = "pass") %dopar% {
+  sapply(tmp, median, na.rm = TRUE)
+}
+res_tmp2 <- as.data.frame(do.call(rbind, res_tmp2))
+
+### merge with stats table
+res_tmp2$scenario <- res_df_tmp$scenario
+res_df2 <- merge(res_df, res_tmp2, all = TRUE)
+### save
+saveRDS(object = res_df2, file = "output/stats_scn_new.RDS")
+write.csv(x = res_df2, file = "output/stats_scn_new.csv", row.names = FALSE)
+
+
+
