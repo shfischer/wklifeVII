@@ -358,7 +358,7 @@ rollerCoaster <- function(stk, sr, brp, fmax=refpts(brp)['crash', 'harvest']*0.7
 ### combine severals parts of FLStock in one object
 ### ------------------------------------------------------------------------ ###
 ### function that combines list of object over iter dimension
-ibind <- function(object){
+ibind <- function(object) {
   
   if (!is.list(object)) stop("object has to be a list")
   
@@ -368,7 +368,7 @@ ibind <- function(object){
   ### create list with iterations for each part
   iter_end <- cumsum(iters_list)
   iter_start <- iter_end - iters_list + 1
-  iters <- lapply(seq_along(iter_start), function(x){
+  iters <- lapply(seq_along(iter_start), function(x) {
     seq(iter_start[x], iter_end[x])
   })
   
@@ -389,24 +389,62 @@ ibind <- function(object){
 stock_ibind <- function(...) {
   
   stk_list <- list(...)
-  stk_temp <- ibind(stk_list)
   
-  ### do the same for the attributes
-  attr(stk_temp, "lhpar") <- ibind(lapply(stk_list, function(x){
-    attr(x, "lhpar")
-  }))
-  attr(stk_temp, "refpts") <- ibind(lapply(stk_list, function(x){
-    attr(x, "refpts")
-  }))
-  attr(stk_temp, "tracking") <- ibind(lapply(stk_list, function(x){
-    attr(x, "tracking")
-  }))
-  attr(stk_temp, "catch_len") <- ibind(lapply(stk_list, function(x){
-    attr(x, "catch_len")
-  }))
+  if (!all(sapply(stk_list, is, "FLS"))) stop("all elements have to be FLS")
   
-  ### set name
-  #name(stk_temp) <- as.character(scenario)
+  ### combine stocks
+  stk_tmp <- ibind(stk_list)
   
-  return(stk_temp)
+  ### find additional attributes
+  attr_add <- setdiff(names(attributes(stk_tmp)), 
+                      c(slotNames(stk_tmp), "class", "ctrl.mp"))
+  
+  ### loop through them
+  for (attr_i in attr_add) {
+    attr(stk_tmp, attr_i) <- ibind(lapply(stk_list, attr, attr_i))
+  }
+  
+  return(stk_tmp)
+}
+
+### ------------------------------------------------------------------------ ###
+### inter-annual variation ####
+### ------------------------------------------------------------------------ ###
+### inter-annual variability
+iav <- function(object, 
+                period, ### periodicity, e.g. use every 2nd value 
+                start, ### starting point
+                summary_per_iter, ### summarise values per iteration
+                summary ### summarise iterations
+) {
+  
+  ### find years
+  yrs <- seq(from = start, to = dims(object)$maxyear, by = period)
+  ### reference years
+  yrs_ref <- yrs[-length(yrs)]
+  ### years to compare
+  yrs_comp <- yrs[-1]
+  
+  ### calculate difference
+  val_diff <- (object[, ac(yrs_comp)] - object[, ac(yrs_ref)])
+  ### variation
+  res <- val_diff / object[, ac(yrs_ref)]
+  ### replace Inf with NA (compared to 0 catch)
+  res@.Data[which(is.infinite(res))] <- NA
+  
+  ### use absolute values
+  res <- abs(res)
+  
+  ### summarise per iteration
+  if (!is.null(summary_per_iter)) {
+    res <- apply(res, 6, summary_per_iter, na.rm = TRUE)
+  }
+  
+  ### summarise iterations
+  if (!is.null(summary)) {
+    res <- apply(res, 1:5, summary, na.rm = TRUE)
+  }
+  
+  return(res)
+  
 }
