@@ -325,7 +325,9 @@ wklife_3.2.1_b_a <- function(idx, b_w = 1.4, refpts = NULL, tracking,
   
   ### modify b, if requested
   if (!is.null(b_z)) {
-    factor_b <- factor_b^b_z
+    if (b_z != 1) {
+      factor_b <- factor_b^b_z
+    }
   }
   
   return(factor_b)
