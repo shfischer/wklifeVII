@@ -69,6 +69,7 @@ obs_bio_len <- function(...){
 idx_bio <- function(stk, observations, ay, tracking,
                     lst_catch = -1, ### last catch/idx year, relative to 
                     lst_idx = -1,   ### intermediate year (ay)
+                    ssb_idx = NULL, ### use SSB as index
                     ...){
   
   ### stock: subset to requested years
@@ -93,6 +94,16 @@ idx_bio <- function(stk, observations, ay, tracking,
   for (idx_count in 1:length(idx)) {
     index(idx[[idx_count]])[, ac(yrs_new)] <- stock.n(stk)[, ac(yrs_new)] *
       index.q(idx[[idx_count]])[, ac(yrs_new)]*stock.wt(stk)[, ac(yrs_new)]
+  }
+  
+  ### if SSB index, reduce index by mortality
+  if (isTRUE(ssb_idx)) {
+    for (idx_count in 1:length(idx)) {
+      index(idx[[idx_count]])[, ac(yrs_new)] <- 
+        index(idx[[idx_count]])[, ac(yrs_new)] * 
+        exp(-(harvest(stk)[, ac(yrs_new)] * harvest.spwn(stk)[, ac(yrs_new)] +
+                m(stk)[, ac(yrs_new)] * m.spwn(stk)[, ac(yrs_new)]))
+    }
   }
   
   ### subset all indices to requested years -> observations
