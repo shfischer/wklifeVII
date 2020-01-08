@@ -328,11 +328,13 @@ res <- foreach(scn = seq_along(ctrl.mps)[scns], .packages = required_pckgs,
   attr(stk, "ctrl.mp") <- ctrl.mp
   ### save stk to disk
   if (n_parts > 1) {
-    saveRDS(stk, file = paste0("/gpfs/afmcefas/simonf/output/", 
+    # saveRDS(stk, file = paste0("/gpfs/afmcefas/simonf/output/", 
+    #                           scn, "_", part, ".rds"))
+    saveRDS(stk, file = paste0("output/perfect_knowledge/",
                               scn, "_", part, ".rds"))
   } else {
-    saveRDS(stk, file = paste0("/gpfs/afmcefas/simonf/output/combined/", 
-                               scn, ".rds"))
+    # saveRDS(stk, file = paste0("/gpfs/afmcefas/simonf/output/combined/", 
+    #                            scn, ".rds"))
   }
   
 } ### end of scenario loop
