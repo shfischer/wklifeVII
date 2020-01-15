@@ -5,6 +5,9 @@
 ### the R session needs to be restarted as FLash and FLasher environments
 ### interfere
 
+### scenarios (OM sets) to run
+scns <- 29
+
 required_pckgs <- c("FLash", "FLAssess", "ggplotFL", "FLBRP", "data.table")
 ### save as object in order to avoid output to screen
 . <- lapply(required_pckgs, function(x){
@@ -12,7 +15,7 @@ required_pckgs <- c("FLash", "FLAssess", "ggplotFL", "FLBRP", "data.table")
 })
 library(doParallel)
 
-cl <- makeCluster(28)
+cl <- makeCluster(parallel::detectCores())
 registerDoParallel(cl)
 
 ### load additional functions
@@ -26,22 +29,16 @@ set.seed(0)
 ### load OMs
 ### ------------------------------------------------------------------------ ###
 
-### load list with OMs
-OM_list <- readRDS("input/stock_list_wklife8.rds")
-
-### names/numbers of OMs
-# names(OM_list) <- seq_along(OM_list[[1]])
-
-### subset
-# OM_list <- OM_list[1:15]
-OM_names <- names(OM_list[[1]])
-
 ### OM scenarios (M, etc.)
-OM_scns <- readRDS("input/OM_scns.rds")
+OM_scns <- read.csv("input/OM_scns.csv", stringsAsFactors = FALSE)
+OM_scns <- OM_scns[scns, ]
+### stock list
+stocks <- read.csv("input/stock_list_full2.csv", as.is = TRUE)
 
 ### create folders for storing OMs
 for (id in OM_scns$id) {
-  dir.create(path = paste0("input/stocks/perfect_knowledge/", id))
+  dir.create(path = paste0("input/stocks/perfect_knowledge/", id), 
+             recursive = TRUE)
 }
 
 ### ------------------------------------------------------------------------ ###
@@ -62,27 +59,28 @@ nsqy <- 3 # number of years to compute status quo metrics
 ### "loop" through all stocks ####
 ### ------------------------------------------------------------------------ ###
 
-OM_list <- foreach(OM_scn_i = seq(nrow(OM_scns)),
+OM_list <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
+                   OM_scn_i = OM_scns$idSEQ,
                    OM_scn_id = OM_scns$id,
                    OM_iter = OM_scns$n_iter,
-                   OM_rec_sd = OM_scns$rec_sd,
-                   OM_rec_rho = OM_scns$rec_rho,
                    OM_n_years = OM_scns$n_years,
                    OM_I_trigger = OM_scns$I_trigger,
-                   .final = function(x) {
-                     names(x) <- OM_scns$id
-                     return(x)
-                   }, .errorhandling = "pass"
+                   .errorhandling = "stop"
                    ) %:%
-  foreach(x = seq_along(OM_list[[OM_scn_i]]), 
-          OM_i = OM_list[[OM_scn_i]],
+  foreach(x = rep(stocks$X, 2),
+          lh_i = rep(split(stocks, 1:nrow(stocks)), 2),
+          fhist_i = rep(c("one-way", "roller-coaster"), 
+                        each = length(stocks$X)),
+          #x = seq_along(OM_list[[OM_scn_i]]), 
+          #OM_i = OM_list[[OM_scn_i]],
           .export = c("nsqy", "getCtrl"),
-          .packages = required_pckgs,
-          .final = function(x) {
-            names(x) <- OM_names
-            return(x)
-          }, .errorhandling = "pass") %dopar% {
-  browser()
+          .errorhandling = "stop", 
+          .packages = c("FLash", "FLAssess", "ggplotFL", "FLBRP", 
+                        "data.table")) %dopar% {
+  #browser()
+  ### load OM
+  OM_i <- readRDS(paste0("input/OM1/", OM_scn$id, "/", fhist_i, "/",
+                         lh_i$stock, ".rds"))
   set.seed(0)
   OM_iy <- dims(OM_i$stk)$maxyear
   ### simulation years to add
@@ -95,9 +93,10 @@ OM_list <- foreach(OM_scn_i = seq(nrow(OM_scns)),
   ### create residuals
   ### values from 2nd argument are used as exp(value), using 0 leads to values 
   ### distributed around 1
+  #if (OM_scn_i %in% c(1, 17:19)) OM_rec_sd <- 0.3
   srbh.res <- FLife::rlnoise(n = OM_iter, 
     FLQuant(0, dimnames = list(year = ac(OM_iy:(OM_iy + OM_n_years)))), 
-            sd = OM_rec_sd, b = OM_rec_rho)
+            sd = OM_scn$rec_sd_proj, b = OM_scn$rec_rho)
   OM_i$srbh.res <- srbh.res
   
   names(OM_i)[names(OM_i) == "sr"] <- "srbh"
@@ -389,23 +388,31 @@ OM_list <- foreach(OM_scn_i = seq(nrow(OM_scns)),
     nsqy <- nsqy
     vy <- ac(iy:fy)
     
+    dir.create(paste0("input/OM2/perfect_knowledge/", OM_scn$id, "/", fhist_i, 
+                      "/"), 
+               recursive = TRUE)
     save(stk, observations, sr.om, sr.om.res, it, fy, y0, dy, iy, ny, nsqy, vy,
-         file = paste0("input/stocks/perfect_knowledge/", OM_scn_id, "/",
-                       x, ".RData"))
+         file = paste0("input/OM2/perfect_knowledge/", OM_scn$id, "/", fhist_i, 
+                       "/", lh_i$stock, ".RData"))
+    saveRDS(list(stk = stk, observations = observations, sr.om = sr.om, 
+                 sr.om.res = sr.om.res, it = it, fy = fy, y0 = y0, dy = dy, 
+                 iy = iy, ny = ny, nsqy = nsqy, vy = vy),
+            file = paste0("input/OM2/perfect_knowledge/", OM_scn$id, "/", 
+                          fhist_i, "/", lh_i$stock, ".rds"))
   })
   
-  return(OM_i)
+  #return(OM_i)
   
-}
+# }
 
 ### ------------------------------------------------------------------------ ###
 ### observation error ####
 ### ------------------------------------------------------------------------ ###
 
-OM_list <- foreach(OM_scn_i = OM_list[OM_scns$obs_error],
-                   OM_iter = OM_scns$n_iter[OM_scns$obs_error]) %:%
-  foreach(OM_i = OM_scn_i, stk_pos = seq_along(OM_scn_i),
-          .packages = required_pckgs, .export = c("nsqy")) %dopar% {
+# OM_list <- foreach(OM_scn_i = OM_list[OM_scns$obs_error],
+#                    OM_iter = OM_scns$n_iter[OM_scns$obs_error]) %:%
+#   foreach(OM_i = OM_scn_i, stk_pos = seq_along(OM_scn_i),
+#           .packages = required_pckgs, .export = c("nsqy")) %dopar% {
   
   ### set seed
   set.seed(1)
@@ -419,7 +426,24 @@ OM_list <- foreach(OM_scn_i = OM_list[OM_scns$obs_error],
   
   ### add uncertainty to catchability
   ### log-normal noise, cv = 0.2
-  index.q(idx) <- index.q(idx) * rlnorm(n = length(index.q(idx)), sdlog = 0.2)
+  q_error <- index(idx) %=% 1
+  q_error[] <- rlnorm(n = length(index.q(idx)), sdlog = OM_scn$idxSD)
+  
+  ### add index uncertainty to each age independently (default)
+  if (!isTRUE(OM_scn$idxSD_age == FALSE)) {
+    
+    ### insert age specific noise
+    index.q(idx) <- index.q(idx) * q_error
+  
+  ### otherwise, add uncertainty to biomass at age
+  } else {
+    
+    ### use only noise from first age and apply to all other ages
+    q_error_bio <- q_error
+    q_error_bio[] <- q_error[1, ]
+    index.q(idx) <- index.q(idx) * q_error_bio
+    
+  }
   
   ### update index values
   index(idx) <- index.q(idx) * stock.n(OM_i$stk) * stock.wt(OM_i$stk)
@@ -479,7 +503,7 @@ OM_list <- foreach(OM_scn_i = OM_list[OM_scns$obs_error],
   attr(stk_tmp, "catch_len") <- NULL
   stk_len <- length_freq(stk_tmp, full_series = TRUE,
                          lhpar = attr(OM_i$stk, "lhpar"),
-                         len_noise_sd = 0.2, len_sd = 1,
+                         len_noise_sd = OM_scn$lengthSD, len_sd = 1,
                          len_sd_cut = 2)
   ### save catch.n as attribute in stk
   attr(OM_i$stk, "catch_len") <- window(catch.n(stk_len), end = 100)
@@ -504,16 +528,25 @@ OM_list <- foreach(OM_scn_i = OM_list[OM_scns$obs_error],
     nsqy <- nsqy
     vy <- ac(iy:fy)
     
-    save(stk, observations, sr.om, sr.om.res, 
-         it, fy, y0, dy, iy, ny, nsqy, vy,
-         file = paste0("input/stocks/observation_error/", 
-                       stk_pos, 
-                       "_.RData"))
-  
+    dir.create(paste0("input/OM2/observation_error/", OM_scn$id, "/", fhist_i, 
+                      "/"), 
+               recursive = TRUE)
+    save(stk, observations, sr.om, sr.om.res, it, fy, y0, dy, iy, ny, nsqy, vy,
+         file = paste0("input/OM2/observation_error/", OM_scn$id, "/", fhist_i, 
+                       "/", lh_i$stock, ".RData"))
+    saveRDS(list(stk = stk, observations = observations, sr.om = sr.om, 
+                 sr.om.res = sr.om.res, it = it, fy = fy, y0 = y0, dy = dy, 
+                 iy = iy, ny = ny, nsqy = nsqy, vy = vy),
+            file = paste0("input/OM2/observation_error/", OM_scn$id, "/", 
+                          fhist_i, "/", lh_i$stock, ".rds"))
+
   })
+  
+  return(NULL)
   
 }
 
 
 stopCluster(cl)
 
+#quit(save = "no")
