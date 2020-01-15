@@ -19,9 +19,7 @@ cl <- makeCluster(parallel::detectCores())
 registerDoParallel(cl)
 
 ### load additional functions
-### source the scripts from functions folder
-invisible(lapply(list.files(path = "functions/", pattern = "*.R$", 
-                            full.names = TRUE), source))
+source("MP_functions.R")
 
 set.seed(0)
 
