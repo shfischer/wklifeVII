@@ -38,7 +38,7 @@ required_pckgs <- c("FLash", "FLAssess", "ggplotFL",
 ### functions ####
 ### ------------------------------------------------------------------------ ###
 
-source("MP_conversion_funs.R")
+source("MP_functions.R")
 
 ### -------------------------------------------------------------------- ###
 ### load scenario specifications and objects ####
@@ -132,7 +132,7 @@ cl_length <- length(cl)
   . <- lapply(required_pckgs, function(x){
     suppressMessages(library(x, character.only = TRUE))
   })
-  source("MP_conversion_funs.R")
+  source("MP_functions.R")
 }
 ### run MSE
 res <- mpDL(om = om, oem = oem, iem = iem, ctrl.mp = ctrl.mp, genArgs = genArgs,
