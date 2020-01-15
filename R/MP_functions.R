@@ -86,7 +86,7 @@ idx_bio <- function(stk, observations, genArgs, tracking,
 ### ------------------------------------------------------------------------ ###
 ### length frequencies
 ### ------------------------------------------------------------------------ ###
-length_freq <- function(stk, genArgs,
+length_freq <- function(stk, genArgs = list(),
                         lst_catch = -1,
                         lengths = NULL, ### FLQuant with lengths
                         len_src = "catch", ### slot for numbers at age
