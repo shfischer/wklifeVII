@@ -27,7 +27,10 @@ idxSD0.6,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.6,,0.2,NA,25
 lengthSD0.4,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.2,,0.4,NA,26
 lengthSD0.6,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.2,,0.6,NA,27
 idxSD0.4_lengthSD0.4,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.4,,0.4,NA,28
-test,gislason,500,100,0.6,0.6,0,,,NA,TRUE,NA,0.4,FALSE,0.2,NA,29
-sel_before,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.2,,0.2,before,30
-sel_mat,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.2,,0.2,maturity,31
-sel_after,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.2,,0.2,after,32
+test_idx0.2,gislason,500,100,0.3,0.3,0,,,NA,TRUE,NA,0.2,FALSE,0.2,NA,29
+test_idx0.5,gislason,500,100,0.3,0.3,0,,,NA,TRUE,NA,0.5,FALSE,0.2,NA,30
+test_idx0.2_sR0.5,gislason,500,100,0.5,0.5,0,,,NA,TRUE,NA,0.2,FALSE,0.2,NA,31
+test_idx0.5_sR0.5,gislason,500,100,0.5,0.5,0,,,NA,TRUE,NA,0.5,FALSE,0.2,NA,32
+sel_before,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.2,,0.2,before,33
+sel_mat,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.2,,0.2,maturity,34
+sel_after,gislason,500,100,0.2,0.3,0.2,,,NA,TRUE,NA,0.2,,0.2,after,35
