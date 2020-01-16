@@ -17,6 +17,13 @@ if (length(args) > 0) {
   ### extract arguments
   for (i in seq_along(args)) eval(parse(text = args[[i]]))
   if (!exists("stock")) stop("stock missing")
+  if (!exists("cpus")) stop("cpus missing")
+  if (!exists("HCRmult")) HCRmult <- 1
+  if (!exists("upper")) upper <- 1
+  if (!exists("lower")) lower <- 1
+  if (!exists("interval")) interval <- 2
+  if (!exists("lst_catch")) lst_catch <- -1
+  if (!exists("lst_idx")) lst_idx <- -1
   
 } else {
   
@@ -81,7 +88,9 @@ oem <- FLoem(method = obs_bio_len,
                               idx = FLQuants(idx_dev = FLQuant())),
              args = list(len_noise_sd = 0.2,
                          len_sd = 1,
-                         len_sd_cut = 2))
+                         len_sd_cut = 2,
+                         lst_idx = lst_idx,
+                         lst_catch = lst_catch))
 ctrl.mp <- mpCtrl(list(
   ctrl.est = mseCtrl(method = wklife_3.2.1_f,
                      args = list(n_catch_yrs = 1, 
@@ -92,10 +101,12 @@ ctrl.mp <- mpCtrl(list(
                                  b_z = 1)),
   ctrl.phcr = mseCtrl(method = wklife_3.2.1_x,
                       args = list(n_catch_yrs = 1,
-                                  multiplier = 1,
-                                  interval = 2,
+                                  multiplier = HCRmult,
+                                  interval = interval,
                                   start_year = 100)),
-  ctrl.hcr = mseCtrl(method = wklife_3.2.1_h),
+  ctrl.hcr = mseCtrl(method = wklife_3.2.1_h,
+                     args = list(upper_constraint = upper,
+                                 lower_constraint = lower)),
   ctrl.is = mseCtrl(method = wklife_3.2.1_k)
 ))
 
@@ -122,7 +133,7 @@ genArgs <- list(fy = 200, ### final simulation year
 
 ### run in parallel
 library(doParallel)
-cl <- makeCluster(10)
+cl <- makeCluster(as.numeric(cpus))
 registerDoParallel(cl)
 cl_length <- length(cl)
 
@@ -142,6 +153,15 @@ res <- mpDL(om = om, oem = oem, iem = iem, ctrl.mp = ctrl.mp, genArgs = genArgs,
 ### save output
 path_out <- paste0("output/observation_error/", OM_scns$id[id], "/",
                    stocks$fhist[stock], "/")
+opts <- vector()
+if (isTRUE(HCRmult != 1)) opts <- append(opts, paste0("HCRmult-", HCRmult))
+if (isTRUE(upper != Inf)) opts <- append(opts, paste0("upper-", upper))
+if (isTRUE(lower != 0)) opts <- append(opts, paste0("lower-", lower))
+if (isTRUE(interval != 2)) opts <- append(opts, paste0("interval-", interval))
+if (isTRUE(lst_idx != -1)) opts <- append(opts, paste0("lstidx-", lst_idx))
+if (isTRUE(lst_catch != -1)) opts <- append(opts, paste0("lstcatch-", lst_catch))
+if (length(opts) > 0 ) path_out <- paste0(path_out, "/",
+                                          paste0(opts, collapse = "_"), "/")
 file_out <- paste0(path_out, stocks$stock[stock], ".rds")
 dir.create(path = path_out, recursive = TRUE)
 saveRDS(object = res, file = file_out)
