@@ -131,8 +131,7 @@ res_corrected <- foreach(name_i = stock_list$stock,
   ### calculate values relative to MSY
   ssb_rel <- SSB / refpts_i["msy", "ssb"]
   fbar_rel <- fbar / refpts_i["msy", "harvest"]
-  ### catch relative to catch when fished at Fmsy
-  catch_rel <- catch / catch_MSY_i
+  catch_rel <- catch / refpts_i["msy", "yield"]
    
   ### save SSB and catch, both versions
   return_tmp <- list(ssb = SSB, catch = catch, fbar = fbar, 
