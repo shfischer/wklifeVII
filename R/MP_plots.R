@@ -23,6 +23,7 @@ scn_df <- scn_df[order(scn_df$scenario), ]
 
 ### load lhist
 lhist <- readRDS("input/lhist_extended.rds")
+stocks <- read.csv("input/stock_list_full2.csv", stringsAsFactors = FALSE)
 ### reference points
 refpts <- readRDS("input/refpts.rds")
 
@@ -30,66 +31,40 @@ refpts <- readRDS("input/refpts.rds")
 theme_paper <- theme_bw(base_size = 8, base_family = "serif")
 
 ### ------------------------------------------------------------------------ ###
-### default catch rule 3.2.1  & fishing history ####
+### default catch rule & fishing history ####
 ### ------------------------------------------------------------------------ ###
 
-### find scenarios
-### catch rule 3.2.1 default
-scns <- scn_df %>% filter(scenario %in% 6515:6572)
+### load MSE results
+files <- paste0(path_default, "corrected/", 
+                rep(c("one-way", "roller-coaster"), each = 29), 
+                "/", stocks$stock, ".rds")
+names(files) <- rep(stocks$stock_short, 2)
+res_corrected <- lapply(files, readRDS)
 
-### load default results
-qnts <- foreach(scenario = scns$scenario, stock = as.character(scns$paper),
-                fhist = scns$fhist,
-                refpts_i = refpts[as.character(scns$stock)]) %do% {
-  #browser()
-  ### load
-  qts_tmp <- readRDS(paste0("output/perfect_knowledge/combined/corrected/",
-                            scenario, ".rds"))
-  ### keep SSB, catch, fbar
-  qts_tmp <- qts_tmp[c("ssb", "catch", "fbar")]
-  ### calculate relative values
-  qts_tmp$catch_rel <- qts_tmp$catch / c(refpts_i["msy", "yield"])
-  qts_tmp$fbar_rel <- qts_tmp$fbar / c(refpts_i["msy", "harvest"])
-  qts_tmp$ssb_rel <- qts_tmp$ssb / c(refpts_i["msy", "ssb"])
-  ### calculate median
-  qts_tmp <- lapply(qts_tmp, iterMedians)
-  ### coerce into data frame
-  qts_tmp <- as.data.frame(FLQuants(qts_tmp))
-  qts_tmp$stock = stock
-  qts_tmp$fhist = fhist
-  return(qts_tmp)
-  
+### extract quants
+res_corrected <- foreach(x = seq_along(res_corrected),
+                         fhist = rep(c("one-way", "roller-coaster"), each = 29),
+                         stock = names(files)) %do% {
+  tmp <- res_corrected[[x]][c("fbar_rel", "ssb_rel", "catch_rel")]
+  tmp <- lapply(tmp, iterMedians)
+  tmp <- as.data.frame(FLQuants(tmp))
+  tmp$fhist = fhist
+  tmp$stock = stock
+  return(tmp)
 }
-qnts <- do.call(rbind, qnts)
+df_res <- do.call(rbind, res_corrected)
 
 ### format for plotting
-qnts_df <- qnts %>% spread(qname, data) %>%
+df_res <- df_res %>% spread(qname, data) %>%
   mutate(year = year - 100,
          group = ifelse(year < 1, "history", "projection"))
-qnts_df <- qnts_df %>% bind_rows(qnts_df %>% filter(year == 0) %>%
+df_res <- df_res %>% bind_rows(df_res %>% filter(year == 0) %>%
                              mutate(group = "projection"))
-qnts_df <- qnts_df %>% 
+df_res <- df_res %>% 
   mutate(group = factor(group, levels = c("history", "projection")))
 
-# qnts_df %>%
-#   ggplot(aes(x = year, y = ssb, group = stock)) +
-#   geom_line() +
-#   facet_wrap(~ fhist) +
-#   theme_bw() +
-#   geom_vline(xintercept = 0.5, linetype = "dashed")
-
 ### plot elements
-plot_ssb <- qnts_df %>%
-  ggplot(aes(x = year, y = ssb, group = stock)) +
-  geom_line(size = 0.15) +
-  facet_grid(fhist ~ group, scales = "free_x", space = "free_x") +
-  theme_paper +
-  scale_x_continuous(breaks = c(-25, 0, 25, 50, 75, 100), expand = c(0, 0)) +
-  labs(y = "SSB") +
-  theme(strip.text.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        plot.margin = unit(x = c(4, 6, 4, 4), units = "pt"))
-plot_ssb_rel <- qnts_df %>%
+plot_ssb_rel <- df_res %>%
   ggplot(aes(x = year, y = ssb_rel, group = stock)) +
   geom_line(size = 0.15) +
   facet_grid(fhist ~ group, scales = "free_x", space = "free_x") +
@@ -98,16 +73,7 @@ plot_ssb_rel <- qnts_df %>%
   labs(y = expression(italic(SSB/B[MSY]))) +
   theme(strip.text.y = element_blank(), panel.spacing.x = unit(0, units = "cm"),
         plot.margin = unit(x = c(4, 6, 4, 4), units = "pt"))
-plot_fbar <- qnts_df %>%
-  ggplot(aes(x = year, y = fbar, group = stock)) +
-  geom_line(size = 0.15) +
-  facet_grid(fhist ~ group, scales = "free_x", space = "free_x") +
-  theme_paper +
-  scale_x_continuous(breaks = c(-25, 0, 25, 50, 75, 100), expand = c(0, 0)) +
-  labs(y = "fishing mortality") +
-  theme(strip.text.y = element_blank(), panel.spacing.x = unit(0, units = "cm"),
-        plot.margin = unit(x = c(4, 6, 4, 4), units = "pt"))
-plot_fbar_rel <- qnts_df %>%
+plot_fbar_rel <- df_res %>%
   ggplot(aes(x = year, y = fbar_rel, group = stock)) +
   geom_line(size = 0.15) +
   facet_grid(fhist ~ group, scales = "free_x", space = "free_x") +
@@ -116,15 +82,7 @@ plot_fbar_rel <- qnts_df %>%
   labs(y = expression(italic(F/F[MSY]))) +
   theme(strip.text.y = element_blank(), panel.spacing.x = unit(0, units = "cm"),
         plot.margin = unit(x = c(4, 6, 4, 4), units = "pt"))
-plot_catch <- qnts_df %>%
-  ggplot(aes(x = year, y = catch, group = stock)) +
-  geom_line(size = 0.15) +
-  facet_grid(fhist ~ group, scales = "free_x", space = "free_x") +
-  theme_paper +
-  scale_x_continuous(breaks = c(-25, 0, 25, 50, 75, 100), expand = c(0, 0)) +
-  labs(y = "catch") +
-  theme(panel.spacing.x = unit(0, units = "cm"))
-plot_catch_rel <- qnts_df %>%
+plot_catch_rel <- df_res %>%
   ggplot(aes(x = year, y = catch_rel, group = stock)) +
   geom_line(size = 0.15) +
   facet_grid(fhist ~ group, scales = "free_x", space = "free_x") +
@@ -134,24 +92,12 @@ plot_catch_rel <- qnts_df %>%
   theme(panel.spacing.x = unit(0, units = "cm"))
 
 ### combine the three plots
-plot_grid(plot_ssb, plot_fbar, plot_catch, rel_widths = c(1, 1, 1.1),
-          nrow = 1)
-### and save
-ggsave(filename = "output/perfect_knowledge/plots/paper/trajectories.png",
-       width = 17, height = 7, units = "cm", dpi = 600, type = "cairo")
-
-ggsave(filename = "output/perfect_knowledge/plots/paper/trajectories.pdf",
-       width = 17, height = 7, units = "cm", dpi = 600)
-
-### same for relative values
-### combine the three plots
 plot_grid(plot_ssb_rel, plot_fbar_rel, plot_catch_rel, 
           rel_widths = c(1, 1, 1.1), nrow = 1)
 ### and save
-ggsave(filename = "output/perfect_knowledge/plots/paper/trajectories_rel.png",
+ggsave(filename = "output/plots/paper_revision/trajectories_rel.png",
        width = 17, height = 7, units = "cm", dpi = 600, type = "cairo")
-
-ggsave(filename = "output/perfect_knowledge/plots/paper/trajectories_rel.pdf",
+ggsave(filename = "output/plots/paper_revision/trajectories_rel.pdf",
        width = 17, height = 7, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
