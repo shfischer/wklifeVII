@@ -152,7 +152,165 @@ ggsave(filename = "output/perfect_knowledge/plots/paper/trajectories_rel.pdf",
        width = 17, height = 7, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
-### penalized regression ####
+### penalized regression - revised ####
+### ------------------------------------------------------------------------ ###
+library(glmnet)
+
+### load data
+glmnet_res <- readRDS("output/glmnet_results_ow_revised.rds")
+
+### create table with linear models
+lms <- lapply(glmnet_res$var_resp, function(x) {
+  tmp <- lm(glmnet_res$data[glmnet_res$data$fhist == "one-way", x] ~
+              glmnet_res$data[glmnet_res$data$fhist == "one-way", "k"])
+  tmp <- as.data.frame(t(data.frame(coef(tmp))))
+  colnames(tmp) <- c("Intercept", "k")
+  tmp$var <- x
+  tmp
+})
+names(lms) <- glmnet_res$var_resp
+lms <- do.call(rbind, lms)
+
+### plots
+p1 <- ggplot(data = glmnet_res$data[glmnet_res$data$fhist == "one-way", ],
+             aes(x = k, y = f_rel)) +
+  geom_point(size = 0.3) + theme_paper + 
+  lims(x = c(0, NA), y = c(0, NA)) +
+  # geom_abline(intercept = glmnet_res$glmnet$f_rel["(Intercept)",],
+  #             slope = glmnet_res$glmnet$f_rel["k",],
+  #             size = 0.3) +
+  # geom_abline(data = lms[lms$var == "f_rel", ], 
+  #             aes(intercept = Intercept, slope = k), linetype = "dashed",
+  #             size = 0.3) + 
+  geom_abline(data = data.frame(
+    intercept = c(glmnet_res$glmnet$f_rel["(Intercept)",],
+                  lms[lms$var == "f_rel", "Intercept"]),
+    slope = c(glmnet_res$glmnet$f_rel["k",],
+              lms[lms$var == "f_rel", "k"]),
+    model = c("lasso regression", "linear regression")),
+    aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
+    show.legend = FALSE) +
+  labs(y = expression(italic(F/F[MSY])), x = "") +
+  theme(axis.title.x = element_blank())
+p2 <- ggplot(data = glmnet_res$data[glmnet_res$data$fhist == "one-way", ],
+             aes(x = k, y = ssb_rel)) +
+  geom_point(size = 0.3) + theme_paper + 
+  lims(x = c(0, NA), y = c(0, NA)) +
+  # geom_abline(intercept = glmnet_res$glmnet$ssb_rel["(Intercept)",],
+  #             slope = glmnet_res$glmnet$ssb_rel["k",],
+  #             size = 0.3) +
+  # geom_abline(data = lms[lms$var == "ssb_rel", ],
+  #             aes(intercept = Intercept, slope = k), linetype = "dashed",
+  #             size = 0.3) +
+  geom_abline(data = data.frame(
+    intercept = c(glmnet_res$glmnet$ssb_rel["(Intercept)",],
+                  lms[lms$var == "ssb_rel", "Intercept"]),
+    slope = c(glmnet_res$glmnet$ssb_rel["k",],
+              lms[lms$var == "ssb_rel", "k"]),
+    model = c("lasso regression", "linear regression")),
+    aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
+    show.legend = FALSE) +
+  labs(y = expression(italic(SSB/B[MSY])), x = "") +
+  theme(axis.title.x = element_blank())
+p3 <- ggplot(data = glmnet_res$data[glmnet_res$data$fhist == "one-way", ],
+             aes(x = k, y = collapse_total)) +
+  geom_point(size = 0.3) + theme_paper + 
+  lims(x = c(0, NA), y = c(0, NA)) +
+  # geom_abline(intercept = glmnet_res$glmnet$collapse_total["(Intercept)",],
+  #             slope = glmnet_res$glmnet$collapse_total["k",],
+  #             size = 0.3) +
+  # geom_abline(data = lms[lms$var == "collapse_total", ], 
+  #             aes(intercept = Intercept, slope = k), linetype = "dashed",
+  #             size = 0.3) + 
+  geom_abline(data = data.frame(
+    intercept = c(glmnet_res$glmnet$collapse_total["(Intercept)",],
+                  lms[lms$var == "collapse_total", "Intercept"]),
+    slope = c(glmnet_res$glmnet$collapse_total["k",],
+              lms[lms$var == "collapse_total", "k"]),
+    model = c("lasso regression", "linear regression")),
+    aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
+    show.legend = FALSE) +
+  labs(y = expression(collapse~risk), x = "") +
+  theme(axis.title.x = element_blank())
+p4 <- ggplot(data = glmnet_res$data[glmnet_res$data$fhist == "one-way", ],
+             aes(x = k, y = ssb_below_blim_total)) +
+  geom_point(size = 0.3) + theme_paper + 
+  lims(x = c(0, NA), y = c(0, NA)) +
+  # geom_abline(intercept = glmnet_res$glmnet$ssb_below_blim_total["(Intercept)",],
+  #             slope = glmnet_res$glmnet$ssb_below_blim_total["k",],
+  #             size = 0.3) +
+  # geom_abline(data = lms[lms$var == "ssb_below_blim_total", ], 
+  #             aes(intercept = Intercept, slope = k), linetype = "dashed",
+  #             size = 0.3) + 
+  geom_abline(data = data.frame(
+    intercept = c(glmnet_res$glmnet$ssb_below_blim_total["(Intercept)",],
+                  lms[lms$var == "ssb_below_blim_total", "Intercept"]),
+    slope = c(glmnet_res$glmnet$ssb_below_blim_total["k",],
+              lms[lms$var == "ssb_below_blim_total", "k"]),
+    model = c("lasso regression", "linear regression")),
+    aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
+    show.legend = FALSE) +
+  labs(y = expression(italic(B[lim])~risk), x = "") +
+  theme(axis.title.x = element_blank())
+p5 <- ggplot(data = glmnet_res$data[glmnet_res$data$fhist == "one-way", ],
+             aes(x = k, y = yield_rel_MSY)) +
+  geom_point(size = 0.3) + theme_paper + 
+  lims(x = c(0, NA), y = c(0, NA)) +
+  # geom_abline(intercept = glmnet_res$glmnet$yield_rel_MSY["(Intercept)",],
+  #             slope = glmnet_res$glmnet$yield_rel_MSY["k",],
+  #             size = 0.3) +
+  # geom_abline(data = lms[lms$var == "yield_rel_MSY", ], 
+  #             aes(intercept = Intercept, slope = k), linetype = "dashed",
+  #             size = 0.3) + 
+  geom_abline(data = data.frame(
+    intercept = c(glmnet_res$glmnet$yield_rel_MSY["(Intercept)",],
+                  lms[lms$var == "yield_rel_MSY", "Intercept"]),
+    slope = c(glmnet_res$glmnet$yield_rel_MSY["k",],
+              lms[lms$var == "yield_rel_MSY", "k"]),
+    model = c("lasso regression", "linear regression")),
+    aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
+    show.legend = FALSE) +
+  labs(y = expression(catch/MSY), x = expression(italic(k)))
+p6 <- ggplot(data = glmnet_res$data[glmnet_res$data$fhist == "one-way", ],
+             aes(x = k, y = iav)) +
+  geom_point(size = 0.3) + theme_paper + 
+  lims(x = c(0, NA), y = c(0, NA)) +
+  # geom_abline(intercept = glmnet_res$glmnet$iav["(Intercept)",],
+  #             slope = glmnet_res$glmnet$iav["k",],
+  #             size = 0.3) +
+  # geom_abline(data = lms[lms$var == "iav", ], 
+  #             aes(intercept = Intercept, slope = k), linetype = "dashed",
+  #             size = 0.3) +
+  geom_abline(data = data.frame(intercept = c(glmnet_res$glmnet$iav["(Intercept)",],
+                                              lms[lms$var == "iav", "Intercept"]),
+                                slope = c(glmnet_res$glmnet$iav["k",],
+                                          lms[lms$var == "iav", "k"]),
+                                model = c("lasso\nregression", 
+                                          "linear\nregression")),
+              aes(intercept = intercept, slope = slope, linetype = model),
+              size = 0.3) +
+  labs(y = "ICV", x = expression(italic(k))) +
+  theme(legend.position = "bottom", 
+        legend.key.size = unit(0.7, units = "lines"))
+### extract legend
+legend <- get_legend(p6)
+### combine plots
+# plot_grid(p1, p2, p3, p4, p5, p6 + theme(legend.position = "none"),
+#           align = "vh", nrow = 3)
+plot_grid(plot_grid(p1, p2, p3, p4, p5, p6 + theme(legend.position = "none"),
+                    align = "vh", nrow = 3),
+          legend, ncol = 1, rel_heights = c(3, 0.2))
+
+
+### save plot
+ggsave(filename = "output/perfect_knowledge/plots/paper/glmnet_revised.png",
+       width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
+
+ggsave(filename = "output/perfect_knowledge/plots/paper/glmnet_revised.pdf",
+       width = 8.5, height = 12, units = "cm", dpi = 600)
+
+### ------------------------------------------------------------------------ ###
+### penalized regression - old ####
 ### ------------------------------------------------------------------------ ###
 library(glmnet)
 
@@ -308,6 +466,7 @@ ggsave(filename = "output/perfect_knowledge/plots/paper/glmnet.png",
 
 ggsave(filename = "output/perfect_knowledge/plots/paper/glmnet.pdf",
        width = 8.5, height = 12, units = "cm", dpi = 600)
+
 
 ### ------------------------------------------------------------------------ ###
 ### clustering ####
