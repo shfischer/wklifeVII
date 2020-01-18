@@ -19,8 +19,8 @@ if (length(args) > 0) {
   if (!exists("stock")) stop("stock missing")
   if (!exists("cpus")) stop("cpus missing")
   if (!exists("HCRmult")) HCRmult <- 1
-  if (!exists("upper")) upper <- 1
-  if (!exists("lower")) lower <- 1
+  if (!exists("upper")) upper <- Inf
+  if (!exists("lower")) lower <- 0
   if (!exists("interval")) interval <- 2
   if (!exists("lst_catch")) lst_catch <- -1
   if (!exists("lst_idx")) lst_idx <- -1
