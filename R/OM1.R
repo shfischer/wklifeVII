@@ -4,7 +4,8 @@
 ### ------------------------------------------------------------------------ ###
 
 ### scenarios (OM sets) to run
-scns <- 25:28
+#scns <- 38
+scns <- as.numeric(commandArgs(TRUE))
 
 ### load packages
 library(FLife)
@@ -14,7 +15,7 @@ library(foreach)
 library(doParallel)
 
 ### set up cluster for parallel computing
-cl <- makeCluster(parallel::detectCores())
+cl <- makeCluster(parallel::detectCores()/2)
 registerDoParallel(cl)
 
 ### load additional functions
@@ -225,7 +226,7 @@ brps <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
   
   ### set-up selectivity (if specified)
   if (!is.na(OM_scn$selectivity)) {
-    if (isTRUE(OM_scn$selectivity) == "before") {
+    if (isTRUE(OM_scn$selectivity == "before")) {
       ### move maturity curve to the left 
       ### 2x the difference between a50 and a95
       sel_def <- function(age, params) {
@@ -235,14 +236,14 @@ brps <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
         sel. <- FLife::logistic(new_age, params)
         return(sel.)
       }
-    } else if (isTRUE(OM_scn$selectivity) == "maturity") {
+    } else if (isTRUE(OM_scn$selectivity == "maturity")) {
       sel_def <- function(age, params) {
         ### mimic age definition as used in maturity function
         new_age <- age - 0.5 + c(params["a50"] - floor(params["a50"]))
         sel. <- FLife::logistic(new_age, params)
         return(sel.)
       }
-    } else if (isTRUE(OM_scn$selectivity) == "after") {
+    } else if (isTRUE(OM_scn$selectivity == "after")) {
       ### move maturity curve to the right 
       ### 2x the difference between a50 and a95
       sel_def <- function(age, params) {
@@ -293,32 +294,33 @@ brps <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
 
 ### save brps
 saveRDS(brps, file = "input/brps_paper.rds")
-saveRDS(brps[[1]], file = "input/brps.rds")
+#saveRDS(brps[[1]], file = "input/brps.rds")
 # brps <- readRDS(file = "input/brps_wklife8.rds")
+# brps <- readRDS(file = "input/brps_paper.rds")
 # brps$I_trigger <- brps[[1]]
 
 ### calculate M
-stocks_lh$M <- sapply(brps[[1]], function(x){
- mean(m(x))
-})
-### mature M (only mature proportion of stock considered)
-stocks_lh$M_mat <- sapply(brps[[1]], function(x){
-  weighted.mean(x = m(x), w = mat(x))
-})
-
-### M/K
-stocks_lh$MK <- with(stocks_lh, M_mat / k)
-
-### max age
-stocks_lh$amax <- sapply(brps[[1]], function(x) dims(x)$plusgroup)
+# stocks_lh$M <- sapply(brps[[1]], function(x){
+#  mean(m(x))
+# })
+# ### mature M (only mature proportion of stock considered)
+# stocks_lh$M_mat <- sapply(brps[[1]], function(x){
+#   weighted.mean(x = m(x), w = mat(x))
+# })
+# 
+# ### M/K
+# stocks_lh$MK <- with(stocks_lh, M_mat / k)
+# 
+# ### max age
+# stocks_lh$amax <- sapply(brps[[1]], function(x) dims(x)$plusgroup)
 
 ### get reference points
-ref_pts <- lapply(brps[[1]], refpts)
-names(ref_pts) <- stocks_lh$stock
-saveRDS(ref_pts, "input/refpts.rds")
+# ref_pts <- lapply(brps[[1]], refpts)
+# names(ref_pts) <- stocks_lh$stock
+# saveRDS(ref_pts, "input/refpts.rds")
 
 ### save stock list
-write.csv(file = "input/stock_list_full2.csv", x = stocks_lh)
+# write.csv(file = "input/stock_list_full2.csv", x = stocks_lh)
 
 ### get full list of lhpars, including calculated ones
 # lhpar_calc <- lapply(brps[[1]], function(x) x@lhpar)
@@ -331,7 +333,7 @@ refpts <- lapply(brps, function(x) {
 ### refpts
 refpts_tmp <- lapply(brps, function(x) lapply(x, refpts))
 saveRDS(refpts_tmp, file = "input/refpts_paper.rds")
-saveRDS(refpts_tmp[[1]], file = "input/refpts.rds")
+#saveRDS(refpts_tmp[[1]], file = "input/refpts.rds")
 
 ### ------------------------------------------------------------------------ ###
 ### create FLStocks ####

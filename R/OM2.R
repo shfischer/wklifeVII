@@ -6,7 +6,8 @@
 ### interfere
 
 ### scenarios (OM sets) to run
-scns <- 29
+# scns <- 38
+scns <- as.numeric(commandArgs(TRUE))
 
 required_pckgs <- c("FLash", "FLAssess", "ggplotFL", "FLBRP", "data.table")
 ### save as object in order to avoid output to screen
@@ -15,7 +16,7 @@ required_pckgs <- c("FLash", "FLAssess", "ggplotFL", "FLBRP", "data.table")
 })
 library(doParallel)
 
-cl <- makeCluster(parallel::detectCores())
+cl <- makeCluster(parallel::detectCores()/2)
 registerDoParallel(cl)
 
 ### load additional functions
@@ -32,12 +33,6 @@ OM_scns <- read.csv("input/OM_scns.csv", stringsAsFactors = FALSE)
 OM_scns <- OM_scns[scns, ]
 ### stock list
 stocks <- read.csv("input/stock_list_full2.csv", as.is = TRUE)
-
-### create folders for storing OMs
-for (id in OM_scns$id) {
-  dir.create(path = paste0("input/stocks/perfect_knowledge/", id), 
-             recursive = TRUE)
-}
 
 ### ------------------------------------------------------------------------ ###
 ### specify dimensions of simulation ####
