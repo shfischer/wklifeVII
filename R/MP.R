@@ -53,12 +53,18 @@ source("MP_functions.R")
 
 ### load the objects for stk, recruitment, ...
 OM_scns <- read.csv("input/OM_scns.csv", stringsAsFactors = FALSE)
+### subuset to current OM scenario definition
+OM_scn <- OM_scns[id, ]
 stocks <- read.csv(file = "input/stock_list_full2.csv", as.is = TRUE)
 stocks <- expand.grid(stock = stocks$stock, 
                       fhist = c("one-way", "roller-coaster"))
 
-input <- readRDS(paste0("input/OM2/observation_error/",
-                        OM_scns$id[id], "/", stocks$fhist[stock], "/",
+### observation error?
+obs_error <- ifelse(OM_scns$obs_error[id], "observation_error",
+                    "perfect_knowledge")
+
+input <- readRDS(paste0("input/OM2/", obs_error, "/",
+                        OM_scn$id, "/", stocks$fhist[stock], "/",
                         stocks$stock[stock], ".rds"))
 
 ### ------------------------------------------------------------------------ ###
@@ -86,11 +92,12 @@ oem <- FLoem(method = obs_bio_len,
              observations = list(stk = input$stk, idx = input$observations$idx), 
              deviances = list(stk = FLQuants(catch_dev = FLQuant()), 
                               idx = FLQuants(idx_dev = FLQuant())),
-             args = list(len_noise_sd = 0.2,
+             args = list(len_noise_sd = OM_scn$lengthSD,
                          len_sd = 1,
                          len_sd_cut = 2,
                          lst_idx = lst_idx,
-                         lst_catch = lst_catch))
+                         lst_catch = lst_catch,
+                         ssb_idx = !OM_scn$obs_error))
 ctrl.mp <- mpCtrl(list(
   ctrl.est = mseCtrl(method = wklife_3.2.1_f,
                      args = list(n_catch_yrs = 1, 
@@ -98,7 +105,8 @@ ctrl.mp <- mpCtrl(list(
                                  option_r = "a",
                                  option_b = "a",
                                  MK = 1.5,
-                                 b_z = 1)),
+                                 b_z = 1,
+                                 perfect_knowledge = !OM_scn$obs_error)),
   ctrl.phcr = mseCtrl(method = wklife_3.2.1_x,
                       args = list(n_catch_yrs = 1,
                                   multiplier = HCRmult,
@@ -151,7 +159,7 @@ res <- mpDL(om = om, oem = oem, iem = iem, ctrl.mp = ctrl.mp, genArgs = genArgs,
             cut_hist = FALSE)
 
 ### save output
-path_out <- paste0("output/observation_error/", OM_scns$id[id], "/",
+path_out <- paste0("output/", obs_error, "/", OM_scn$id, "/",
                    stocks$fhist[stock], "/")
 opts <- vector()
 if (isTRUE(HCRmult != 1)) opts <- append(opts, paste0("HCRmult-", HCRmult))
