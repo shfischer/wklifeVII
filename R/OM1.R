@@ -4,7 +4,7 @@
 ### ------------------------------------------------------------------------ ###
 
 ### scenarios (OM sets) to run
-#scns <- 38
+#scns <- 29
 scns <- as.numeric(commandArgs(TRUE))
 
 ### load packages
@@ -27,8 +27,6 @@ source("MP_functions.R")
 
 ### extended list
 stocks_lh <- read.csv("input/stock_list_full.csv")
-### used at WKLIFE VII 2017:
-#stocks_lh <- read.csv("input/wklife.csv")[, -1]
 ### subset to non-NA stocks
 stocks_lh <- stocks_lh[!is.na(stocks_lh$a), ]
 names(stocks_lh)[1] <- "name"
@@ -45,74 +43,6 @@ stocks_lh$stock <- as.character(stocks_lh$stock)
 if (nrow(stocks_lh) > 15) {
   stocks_lh$stock[29] <- paste0(stocks_lh$stock[29], "_2")
 }
-
-### ------------------------------------------------------------------------ ###
-### create OMs to find fbar range ####
-### ------------------------------------------------------------------------ ###
-
-# stks <- foreach(i = split(stocks_lh, 1:nrow(stocks_lh)),
-#                 .errorhandling = "pass", 
-#                 .packages = c("FLife", "FLasher", "FLBRP")) %dopar% {
-#   
-#   ### create brp
-#   ### get lh params
-#   lh_res <- c(dimnames(lhPar(FLPar(linf = 1)))$params, "l50")
-#   lh_avail <- intersect(lh_res, names(i))
-#   lh_pars <- i[, lh_avail]
-#   lh_pars <- lh_pars[, !is.na(lh_pars)]
-#   lh_pars <- as(lh_pars, "FLPar")
-#   ### create missing pars
-#   lh_pars <- lhPar(lh_pars)
-#   
-#   # Max age: age at l = 0.95 * linf
-#   max_age <- ceiling(log(0.05)/(-c(lh_pars["k"]))+c(lh_pars["t0"]))
-#   
-#   ### create brp
-#   brp <- lhEql(lh_pars, range = c(min = 1, max = max_age, 
-#                                   minfbar = 1, maxfbar = max_age, 
-#                                   plusgroup = max_age))
-#   
-#   ### coerce into FLStock
-#   stk <- as(brp, "FLStock")
-#   
-#   ### create SRR
-#   srr <- FLSR(params = params(brp), model = model(brp))
-#   
-#   ### harvest at Fmsy for 100 years
-#   target <- fwdControl(data.frame(year = 3:101, 
-#                                   value = c(refpts(brp)["msy", "harvest"]),
-#                                   quant = "f"))
-#   ### project
-#   stk_fwd <- fwd(stk, control = target, sr = srr)
-#   
-#   return(stk_fwd)
-# 
-# }
-# 
-# #for(i in 1:length(stks)){
-# (i <- i + 1) 
-#   ggplot(data = as.data.frame((catch.n(stks[[i]]))[, ac(3:100)]),
-#        aes(x = age, y = data, colour = as.factor(year))) +
-#   geom_line() + geom_point()
-#   ggplot(data = as.data.frame((catch.n(stks[[i]]) * catch.wt(stks[[i]]))[, ac(3:100)]),
-#          aes(x = age, y = data, colour = as.factor(year))) +
-#     geom_line() + geom_point()
-# 
-#   (catch <- (catch.n(stks[[i]]))[, ac(101)])
-#   (catch_rel <- catch / sum(catch))
-#   sum(catch_rel[4:20])
-# #}
-# 
-# res <- lapply(1:29, function(x){
-#   (catch <- (catch.n(stks[[x]]))[, ac(101)])
-#   (catch_rel <- catch / sum(catch))
-#   (catch2 <- (catch.n(stks[[x]]) * catch.wt(stks[[x]]))[, ac(101)])
-#   (catch_rel2 <- catch2 / sum(catch2))
-#   data.frame(n = sum(catch_rel[fbar_range[x,1]:fbar_range[x,2]]), 
-#              b = sum(catch_rel2[fbar_range[x,1]:fbar_range[x,2]]))
-# })
-# res <- do.call(rbind, res)
-# res
 
 ### ------------------------------------------------------------------------ ###
 ### create final brps ####

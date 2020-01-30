@@ -16,7 +16,7 @@ required_pckgs <- c("FLash", "FLAssess", "ggplotFL", "FLBRP", "data.table")
 })
 library(doParallel)
 
-cl <- makeCluster(parallel::detectCores()/2)
+cl <- makeCluster(20)
 registerDoParallel(cl)
 
 ### load additional functions
@@ -30,7 +30,7 @@ set.seed(0)
 
 ### OM scenarios (M, etc.)
 OM_scns <- read.csv("input/OM_scns.csv", stringsAsFactors = FALSE)
-OM_scns <- OM_scns[scns, ]
+OM_scns <- OM_scns[OM_scns$idSEQ %in% scns, ]
 ### stock list
 stocks <- read.csv("input/stock_list_full2.csv", as.is = TRUE)
 
@@ -38,15 +38,8 @@ stocks <- read.csv("input/stock_list_full2.csv", as.is = TRUE)
 ### specify dimensions of simulation ####
 ### ------------------------------------------------------------------------ ###
 
-# it <- dims(OM_list[[1]]$stk)$iter # iterations
-# fy <- dims(OM_list[[1]]$stk)$maxyear + 100 # final year
-# y0 <- range(OM_list[[1]]$stk)[["minyear"]] # initial data year
-# dy <- range(OM_list[[1]]$stk)[["maxyear"]] # final data year
-# iy <- dims(OM_list[[1]]$stk)$maxyear # initial year of projection (also intermediate)
-# ny <- fy - iy + 1 # number of years to project from intial year
 nsqy <- 3 # number of years to compute status quo metrics
-# vy <- ac(iy:fy) # vector of years to be projected
-
+### happens later
 
 ### ------------------------------------------------------------------------ ###
 ### "loop" through all stocks ####
@@ -393,20 +386,11 @@ OM_list <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
             file = paste0("input/OM2/perfect_knowledge/", OM_scn$id, "/", 
                           fhist_i, "/", lh_i$stock, ".rds"))
   })
-  
-  #return(OM_i)
-  
-# }
 
 ### ------------------------------------------------------------------------ ###
 ### observation error ####
 ### ------------------------------------------------------------------------ ###
 
-# OM_list <- foreach(OM_scn_i = OM_list[OM_scns$obs_error],
-#                    OM_iter = OM_scns$n_iter[OM_scns$obs_error]) %:%
-#   foreach(OM_i = OM_scn_i, stk_pos = seq_along(OM_scn_i),
-#           .packages = required_pckgs, .export = c("nsqy")) %dopar% {
-  
   ### set seed
   set.seed(1)
   
