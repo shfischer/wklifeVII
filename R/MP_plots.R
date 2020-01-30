@@ -1,3 +1,8 @@
+### ------------------------------------------------------------------------ ###
+### create plots for publication ####
+### ------------------------------------------------------------------------ ###
+### uses data prepared in MP_analysis.R
+
 library(FLCore)
 library(ggplotFL)
 library(tidyverse)
@@ -6,20 +11,8 @@ library(cowplot)
 library(Cairo)
 library(doParallel)
 
-cl <- makeCluster(10)
-registerDoParallel(cl)
-
 ### path to final scenario
 path_default <- "output/observation_error/new_baseline/"
-
-### scenario defintions
-scn_df <- read.csv("MP_scenarios.csv")
-
-### load short/paper names
-names_short <- read.csv("input/names_short.csv")
-### add names and order by scenario
-scn_df <- merge(scn_df, names_short)
-scn_df <- scn_df[order(scn_df$scenario), ]
 
 ### load lhist
 lhist <- readRDS("input/lhist_extended.rds")
@@ -110,70 +103,70 @@ glmnet_res <- readRDS(paste0(path_default, "corrected/one-way/glmnet.rds"))
 
 ### plots
 p1 <- ggplot(data = glmnet_res$data,
-             aes(x = k, y = f_rel_new)) +
+             aes(x = k, y = f_rel)) +
   geom_point(size = 0.3) + theme_paper + 
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
-    intercept = c(glmnet_res$glmnet$f_rel_new["(Intercept)",],
-                  lms[lms$var == "f_rel_new", "Intercept"]),
+    intercept = c(glmnet_res$glmnet$f_rel["(Intercept)",],
+                  lms[lms$var == "f_rel", "Intercept"]),
     slope = c(glmnet_res$glmnet$f_rel_new["k",],
-              lms[lms$var == "f_rel_new", "k"]),
+              lms[lms$var == "f_rel", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
   labs(y = expression(italic(F/F[MSY])), x = "") +
   theme(axis.title.x = element_blank())
 p2 <- ggplot(data = glmnet_res$data,
-             aes(x = k, y = ssb_rel_new)) +
+             aes(x = k, y = ssb_rel)) +
   geom_point(size = 0.3) + theme_paper + 
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
-    intercept = c(glmnet_res$glmnet$ssb_rel_new["(Intercept)",],
-                  lms[lms$var == "ssb_rel_new", "Intercept"]),
-    slope = c(glmnet_res$glmnet$ssb_rel_new["k",],
-              lms[lms$var == "ssb_rel_new", "k"]),
+    intercept = c(glmnet_res$glmnet$ssb_rel["(Intercept)",],
+                  lms[lms$var == "ssb_rel", "Intercept"]),
+    slope = c(glmnet_res$glmnet$ssb_rel["k",],
+              lms[lms$var == "ssb_rel", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
   labs(y = expression(italic(SSB/B[MSY])), x = "") +
   theme(axis.title.x = element_blank())
 p3 <- ggplot(data = glmnet_res$data,
-             aes(x = k, y = collapse_total_new)) +
+             aes(x = k, y = risk_collapse)) +
   geom_point(size = 0.3) + theme_paper + 
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
-    intercept = c(glmnet_res$glmnet$collapse_total_new["(Intercept)",],
-                  lms[lms$var == "collapse_total_new", "Intercept"]),
-    slope = c(glmnet_res$glmnet$collapse_total_new["k",],
-              lms[lms$var == "collapse_total_new", "k"]),
+    intercept = c(glmnet_res$glmnet$risk_collapse["(Intercept)",],
+                  lms[lms$var == "risk_collapse", "Intercept"]),
+    slope = c(glmnet_res$glmnet$risk_collapse["k",],
+              lms[lms$var == "risk_collapse", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
   labs(y = expression(collapse~risk), x = "") +
   theme(axis.title.x = element_blank())
 p4 <- ggplot(data = glmnet_res$data,
-             aes(x = k, y = ssb_below_blim_new)) +
+             aes(x = k, y = risk_blim)) +
   geom_point(size = 0.3) + theme_paper + 
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
-    intercept = c(glmnet_res$glmnet$ssb_below_blim_new["(Intercept)",],
-                  lms[lms$var == "ssb_below_blim_new", "Intercept"]),
-    slope = c(glmnet_res$glmnet$ssb_below_blim_new["k",],
-              lms[lms$var == "ssb_below_blim_new", "k"]),
+    intercept = c(glmnet_res$glmnet$risk_blim["(Intercept)",],
+                  lms[lms$var == "risk_blim", "Intercept"]),
+    slope = c(glmnet_res$glmnet$risk_blim["k",],
+              lms[lms$var == "risk_blim", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
   labs(y = expression(italic(B[lim])~risk), x = "") +
   theme(axis.title.x = element_blank())
 p5 <- ggplot(data = glmnet_res$data[, ],
-             aes(x = k, y = yield_rel_MSY_new)) +
+             aes(x = k, y = yield_rel)) +
   geom_point(size = 0.3) + theme_paper + 
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
-    intercept = c(glmnet_res$glmnet$yield_rel_MSY_new["(Intercept)",],
-                  lms[lms$var == "yield_rel_MSY_new", "Intercept"]),
-    slope = c(glmnet_res$glmnet$yield_rel_MSY_new["k",],
-              lms[lms$var == "yield_rel_MSY_new", "k"]),
+    intercept = c(glmnet_res$glmnet$yield_rel["(Intercept)",],
+                  lms[lms$var == "yield_rel", "Intercept"]),
+    slope = c(glmnet_res$glmnet$yield_rel["k",],
+              lms[lms$var == "yield_rel", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
@@ -184,7 +177,7 @@ p6 <- ggplot(data = glmnet_res$data[, ],
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = 
                 data.frame(intercept = c(glmnet_res$glmnet$iav["(Intercept)",],
-                                         lms[lms$var == "iav", "Intercept"]),
+                                              lms[lms$var == "iav", "Intercept"]),
                            slope = c(glmnet_res$glmnet$iav["k",],
                                           lms[lms$var == "iav", "k"]),
                            model = c("lasso\nregression", 
@@ -214,7 +207,8 @@ ggsave(filename = "output/plots/paper_revision/glmnet.pdf",
 library(dtwclust)
 library(ggdendro)
 
-cluster <- readRDS(paste0(path, "corrected/one-way/cluster_plot_data.rds"))
+cluster <- readRDS(paste0(path_default, 
+                          "corrected/one-way/plot_data_cluster.rds"))
 
 ### plot
 p1 <- ggplot(cluster$curves[cluster$curves$k %in% 1:4, ],
@@ -256,13 +250,32 @@ p2 <- ggplot(data = cluster$bars[cluster$bars$n_cluster %in% 1:4, ],
 p3 <- ggdendrogram(cluster$dend) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   theme(axis.text.y = element_blank(), axis.title.x = element_blank(),
-        #axis.title.x = element_text(colour = "black"),
         axis.title.y = element_text(colour = "black", angle = 90, hjust = 0.5),
         axis.text.x = element_text(size = 8),
         text = element_text(size = 8, family = "serif")) +
   labs(x = "stocks", y = "DTW distance")
 
-plot_grid(p3, plot_grid(p1, p2, ncol = 2, rel_widths = c(1.7, 1), 
+p4 <- ggplot(segment(cluster$dend) %>%
+         mutate(yend = ifelse(yend == 0, -2, yend))) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.4) +
+  geom_text(data = label(cluster$dend),
+               aes(label = label, x = x, y = 0, colour = as.factor(`4`)),
+            show.legend = FALSE, hjust = 1, angle = 90, nudge_y = -5,
+            family = "serif", size = 2.5) +
+  coord_cartesian(ylim = c(-20, max(cluster$dend$segments$y))) + 
+  #coord_trans(y = log) +
+  theme_paper +
+  theme(panel.grid = element_blank(), 
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.title.x = element_blank(),#element_text(colour = NA),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(y = "DTW distance")
+
+plot_grid(p4, plot_grid(p1, p2, ncol = 2, rel_widths = c(1.7, 1), 
                         labels = c("B", "C"), label_fontfamily = "serif"),
           nrow = 2, rel_heights = c(1, 2), labels = c("A", ""), 
           label_fontfamily = "serif")
@@ -277,89 +290,53 @@ ggsave(filename = "output/plots/paper_revision/clustering.pdf",
 ### multiplier ####
 ### ------------------------------------------------------------------------ ###
 
-### load full stats
-stats <- readRDS(file = "output/stats_scn_new.RDS")
-### load cluster allocations for colour-coding
-cl_alloc_ow <- readRDS("output/cluster_allocations_one_way.rds")
-### merge
-stats <- merge(stats, cl_alloc_ow[, c("4", "stock")])
-### subset to scenarios for multiplier
-### subset to 3.2.1 & one-way & multiplier
-stats_df <- stats %>%
-  filter(scenario %in% 4485:6804 & b_z == 1 &
-           `4` != 0)
-
-p1 <- stats_df %>% 
-  ggplot(aes(x = HCRmult, y = f_rel, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+data_mult <- readRDS(paste0(path_default, "plot_data_multiplier.rds"))
+p1 <- data_mult %>% 
+  ggplot(aes(x = HCRmult, y = f_rel, group = paper, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  #geom_line() +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   ylim(0, 1.5) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = expression(italic(F/F[MSY]))) +
   theme(strip.text = element_blank())
-p2 <- stats_df %>% 
-  ggplot(aes(x = HCRmult, y = ssb_rel, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p2 <- data_mult %>% 
+  ggplot(aes(x = HCRmult, y = ssb_rel, group = paper, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = expression(italic(SSB/B[MSY]))) +
   theme(strip.text = element_blank())
-p3 <- stats_df %>% 
-  ggplot(aes(x = HCRmult, y = collapse_total, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p3 <- data_mult %>% 
+  ggplot(aes(x = HCRmult, y = risk_collapse, group = paper, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = expression(collapse~risk))
-p4 <- stats_df %>% 
-  ggplot(aes(x = HCRmult, y = ssb_below_blim_total, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p4 <- data_mult %>% 
+  ggplot(aes(x = HCRmult, y = risk_blim, group = paper, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = expression(italic(B[lim])~risk)) +
   theme(strip.text = element_blank())
-p5 <- stats_df %>% 
-  ggplot(aes(x = HCRmult, y = catch_MSY_prop, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p5 <- data_mult %>% 
+  ggplot(aes(x = HCRmult, y = yield_rel, group = paper, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "catch rule multiplier", 
        y = expression(catch/MSY)) +
   theme(strip.text = element_blank())
-p6 <- stats_df %>% 
-  ggplot(aes(x = HCRmult, y = iav, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p6 <- data_mult %>% 
+  ggplot(aes(x = HCRmult, y = iav, group = paper, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid"), "cluster") +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50"), "cluster") +
   scale_linetype("cluster") + scale_colour_discrete("cluster") +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = "ICV")
@@ -371,11 +348,9 @@ plot_grid(plot_grid(p1, p2, p3, p4, p5, p6 + theme(legend.position = "none"),
                     nrow = 2, align = "hv"),
           legend, ncol = 2, rel_widths = c(3, 0.2))
 
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "multiplier_colour.png"),
+ggsave(filename = "output/plots/paper_revision/multiplier.png",
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "multiplier_colour.pdf"),
+ggsave(filename = "output/plots/paper_revision/multiplier.pdf",
        width = 17, height = 13, units = "cm", dpi = 600)
 
 
@@ -384,105 +359,79 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
 ### catch constraints ####
 ### ------------------------------------------------------------------------ ###
 
-### subset to scenarios for catch constraints
-### subset to 3.2.1 & one-way & multiplier
-stats_df <- stats %>%
-  filter(scenario %in% 1237:4484)
+
+stats_df <- readRDS(paste0(path_default, "plot_data_constraints.rds"))
 
 ### upper constraints
-p1 <- stats_df %>% filter(upper_constraint < Inf &
-                            lower_constraint == 0) %>%
-  ggplot(aes(x = upper_constraint, y = ssb_rel, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p1 <- stats_df %>% filter(upper < Inf &
+                            lower == 0) %>%
+  ggplot(aes(x = upper, y = ssb_rel, group = stock, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  geom_line(data = stats_df %>% filter(upper_constraint %in% c(1.5, Inf) &
-                                         lower_constraint == 0),
+  geom_line(data = stats_df %>% filter(upper %in% c(1.5, Inf) &
+                                         lower == 0),
             size = 0.05, show.legend = FALSE) +
-  geom_point(data = stats_df %>% filter(upper_constraint %in% c(Inf) &
-                                          lower_constraint == 0),
+  geom_point(data = stats_df %>% filter(upper %in% c(Inf) &
+                                          lower == 0),
             size = 0.8, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = expression(italic(SSB/B[MSY]))) + ylim(0, NA) +
   theme(strip.text = element_blank())
-p2 <- stats_df %>% filter(upper_constraint < Inf &
-                            lower_constraint == 0) %>%
-  ggplot(aes(x = upper_constraint, y = ssb_below_blim_total, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p2 <- stats_df %>% filter(upper < Inf &
+                            lower == 0) %>%
+  ggplot(aes(x = upper, y = risk_blim, group = stock, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  geom_line(data = stats_df %>% filter(upper_constraint %in% c(1.5, Inf) &
-                                         lower_constraint == 0),
+  geom_line(data = stats_df %>% filter(upper %in% c(1.5, Inf) &
+                                         lower == 0),
             size = 0.05, show.legend = FALSE) +
-  geom_point(data = stats_df %>% filter(upper_constraint %in% c(Inf) &
-                                          lower_constraint == 0),
+  geom_point(data = stats_df %>% filter(upper %in% c(Inf) &
+                                          lower == 0),
              size = 0.8, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "upper catch constraint", y = expression(italic(B[lim])~risk)) +
   theme(strip.text = element_blank())
-p3 <- stats_df %>% filter(upper_constraint < Inf &
-                            lower_constraint == 0) %>%
-  ggplot(aes(x = upper_constraint, y = catch_MSY_prop, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p3 <- stats_df %>% filter(upper < Inf &
+                            lower == 0) %>%
+  ggplot(aes(x = upper, y = yield_rel, group = stock, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2) +
-  geom_line(data = stats_df %>% filter(upper_constraint %in% c(1.5, Inf) &
-                                         lower_constraint == 0),
+  geom_line(data = stats_df %>% filter(upper %in% c(1.5, Inf) &
+                                         lower == 0),
             size = 0.05, show.legend = FALSE) +
-  geom_point(data = stats_df %>% filter(upper_constraint %in% c(Inf) &
-                                          lower_constraint == 0),
+  geom_point(data = stats_df %>% filter(upper %in% c(Inf) &
+                                          lower == 0),
              size = 0.8, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid"), "cluster") +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50"), "cluster") +
   scale_colour_discrete("cluster") + scale_linetype("cluster") + 
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = expression(catch/MSY)) +
   theme(legend.position = "right")
 
 ### lower constraints
-p4 <- stats_df %>% filter(upper_constraint == 1.2) %>%
-  ggplot(aes(x = lower_constraint, y = ssb_rel, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p4 <- stats_df %>% filter(upper == 1.2) %>%
+  ggplot(aes(x = lower, y = ssb_rel, group = stock, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = expression(italic(SSB/B[MSY]))) + ylim(0, NA) +
   theme(strip.text = element_blank()) + xlim(0, 1)
-p5 <- stats_df %>% filter(upper_constraint == 1.2) %>%
-  ggplot(aes(x = lower_constraint, y = ssb_below_blim_total, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p5 <- stats_df %>% filter(upper == 1.2) %>%
+  ggplot(aes(x = lower, y = risk_blim, group = stock, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2, show.legend = FALSE) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid")) +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50")) +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "lower catch constraint", y = expression(italic(B[lim])~risk)) +
   theme(strip.text = element_blank()) + xlim(0, 1)
-p6 <- stats_df %>% filter(upper_constraint == 1.2) %>%
-  ggplot(aes(x = lower_constraint, y = catch_MSY_prop, group = stock, 
-             linetype = as.factor(`4`), colour = as.factor(`4`))) +
+p6 <- stats_df %>% filter(upper == 1.2) %>%
+  ggplot(aes(x = lower, y = yield_rel, group = stock, 
+             linetype = as.factor(cluster), colour = as.factor(cluster))) +
   theme_paper + 
   geom_line(size = 0.2) +
-  # scale_linetype_manual(values = c(`2` = "dotted", `3` = "dashed", 
-  #                                  `4` = "solid", `1` = "solid"), "cluster") +
-  # scale_colour_manual(values = c(`2` = "black", `3` = "grey50", 
-  #                                `4` = "black", `1` = "grey50"), "cluster") +
   facet_wrap(~ fhist, ncol = 1, strip.position = "right") +
   labs(x = "", y = expression(catch/MSY)) +
   theme(legend.position = "none") + xlim(0, 1)
@@ -498,11 +447,10 @@ plot_grid(plot_grid(p_upper, p_lower, ncol = 1, labels = c("A", "B"),
                     label_fontfamily = "serif"),
           legend, rel_widths = c(3, 0.2))
 
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "constraints_colour.png"),
+
+ggsave(filename = "output/plots/paper_revision/consraints.png",
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "constraints_colour.pdf"),
+ggsave(filename = "output/plots/paper_revision/constraints.pdf",
        width = 17, height = 13, units = "cm", dpi = 600)
 
 
@@ -510,98 +458,8 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
 ### contribution of catch rule components ####
 ### ------------------------------------------------------------------------ ###
 
-### go through scenarios
-df_comps <- foreach(scenario = scns$scenario[1:2], paper = scns$paper[1:2],
-                    refpts_i = refpts[scns$stock[1:2]],
-                    .combine = rbind, .packages = "FLCore") %do% {
-  #browser()
-  ### load stock
-  stk_tmp <- readRDS(paste0("output/perfect_knowledge/combined/", scenario, 
-                           ".rds"))
-  
-  ### load quants
-  quants <- readRDS(paste0("output/perfect_knowledge/combined/corrected/",
-                          scenario, ".rds"))
-  
-  ### get tracking object
-  comps <- stk_tmp@tracking[c("HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),
-                           ac(seq(from = 99, to = 200, by = 2))]
-  # comps <- 1
-  #   apply(comps, c(2:6), prod)
-  
-  ### find collapses and remove values
-  for (year_i in dimnames(comps)$year) {
-   for (iter_i in dimnames(comps)$iter) {
-     if (isTRUE(quants$ssb[, year_i,,,, iter_i] == 0)) {
-       comps[, year_i,,,, iter_i] <- NA
-     }
-   }
-  }
 
-  ### coerce into df for plotting
-  df_comps <- as.data.frame(comps)
-  df_comps$metric <- substr(x = df_comps$metric, start = 9, stop = 9)
-  
-  ### add relative SSB/Bmsy
-  ssb_rel <- (quants$ssb / c(refpts_i["msy", "ssb"]))[, ac(99:198)]
-  df_ssb <- as.data.frame(ssb_rel)
-  names(df_ssb)[1] <- "metric"
-  df_ssb$metric <- "SSB"
-  ### median ssb
-  ssb_med <- apply(ssb_rel, 2, median)
-  df_ssb_med <- as.data.frame(ssb_med)
-  names(df_ssb_med)[1] <- "metric"
-  df_ssb_med$metric <- "SSB_median"
-  
-  df_res <- rbind(df_comps, df_ssb, df_ssb_med)
-  ### stock names in paper format
-  df_res$paper <- paper
-  
-  return(df_res)
-  
-}
-
-### log transform
-# df_comps$log_data <- log(df_comps$data)
-### add product
-df_comps <- df_comps %>% spread(metric, data)
-df_comps$prod <- with(df_comps, r * f * b)
-### gather again
-df_comps <- df_comps %>% 
-  gather(key = "component", value = "data", r, f, b, prod, SSB, SSB_median)
-
-# ### add sum
-# df_comps <- df_comps %>% spread(metric, data)
-# df_comps$sum <- with(df_comps, r + f + b)
-# ### gather again
-# df_comps <- df_comps %>% 
-#   gather(key = "component", value = "data", r, f, b, sum)
-
-### change years to start from 1
-df_comps <- df_comps %>%
-  mutate(year = year - 98) %>%
-  left_join(names_short %>% select(paper, stock)) %>%
-  left_join(lhist %>% select(k, stock))
-df_comps <- df_comps %>% filter(!is.na(data))
-df_comps <- df_comps %>%
-  mutate(percentile = ifelse(component != "SSB_median", "median", 
-                             "SSB/Bmsy"))
-df_comps_perc <- df_comps %>%
-  group_by(paper, year, percentile, component) %>%
-  summarise(`5%` = quantile(data, probs = 0.05, na.rm = TRUE),
-            `25%` = quantile(data, probs = 0.25, na.rm = TRUE),
-            `50%` = quantile(data, probs = 0.50, na.rm = TRUE),
-            `75%` = quantile(data, probs = 0.75, na.rm = TRUE),
-            `95%` = quantile(data, probs = 0.95, na.rm = TRUE))
-df_comps_perc <- df_comps_perc %>%
-  mutate(label = factor(component, levels = c("r", "f", "b", "prod", "SSB",
-                                                  "SSB_median"),
-                            labels = c("italic(r)",
-                                       "italic(f)",
-                                       "italic(b)",
-                                       "italic(r~f~b)",
-                                       "SSB_rel", 
-                                       "italic(r~f~b)")))
+df_comps_perc <- readRDS(paste0(path, "components_data_plot.rds"))
 
 ### plot
 p <- df_comps_perc %>%
@@ -614,7 +472,7 @@ p <- df_comps_perc %>%
   geom_line(aes(x = year, y = `50%`, linetype = "median"), size = 0.2) +
   geom_hline(yintercept = 1, linetype = "dotted", size = 0.2) +
   scale_linetype("") +
-  facet_grid(label ~ paper, 
+  facet_grid(label ~ stk_label2, 
              scales = "fixed", labeller = label_parsed) +
   theme_paper +
   labs(x = "year", y = "component value") +
@@ -624,11 +482,9 @@ p <- df_comps_perc %>%
   #          colour = "red", linetype = "dashed")
 p
 
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "components.png"),
+ggsave(filename = "output/plots/paper_revision/components.png",
        width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "components.pdf"),
+ggsave(filename = "output/plots/paper_revision/components.pdf",
        width = 8.5, height = 10, units = "cm", dpi = 600)
 
 
@@ -636,53 +492,20 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
 ### data timing ####
 ### ------------------------------------------------------------------------ ###
 
-### subset to scenarios
-scns <- scn_df %>% filter(scenario %in% c(6863:7210))
-
-### load quants and calculate SSB/Bmsy
-qnts <- foreach(scenario = scns$scenario, stock = scns$stock,
-                  .packages = "FLCore", .export = "refpts") %dopar% {
-  ### load SSB
-  ssb_i <- readRDS(paste0("output/perfect_knowledge/combined/corrected/",
-                          scenario, ".rds"))$ssb
-  ### calculate relative SSB
-  ssb_i <- ssb_i / c(refpts[[stock]]["msy", "ssb"])
-  ### use median only
-  ssb_i <- iterMedians(ssb_i)
-  ### return
-  return(ssb_i)
-}
-### format
-names(qnts) <- scns$scenario
-qnts <- FLQuants(qnts)
-qnts_df <- as.data.frame(qnts)
-qnts_df <- qnts_df %>%
-  mutate(scenario = as.numeric(as.character(qname)),
-         year = year - 100) %>%
-  filter(year >= 1) %>%
-  left_join(scns) %>%
-  left_join(lhist %>% select(stock, k))
-  
-
-### plot SSB for all stocks
-qnts_df %>% filter(fhist == "one-way" & 
-                     paper %in% c("ang", "pol", "ane", "her")) %>%
-  mutate(timing = paste(lst_catch, lst_idx),
-         wrap = paste0("italic(k)==", k, "~", paper),
-         TAC = ifelse(TAC == 1, "annual", "biennial"),
-         timing = ifelse(timing == "0 1", "0 +1", timing)) %>%
+res <- readRDS(paste0(path, "plot_data_timing.rds"))
+### plot SSB 
+res %>% filter(stock %in% c("ang", "pol", "ane", "her")) %>%
   ggplot(aes(x = year, y = data, linetype = timing, colour = as.factor(TAC))) +
   geom_line(size = 0.2) +
   theme_paper +
-  facet_wrap(~ wrap, labeller = label_parsed) +
+  facet_wrap(~ label2, labeller = label_parsed) +
   scale_colour_manual("TAC period", values = c("grey", "black")) +
   scale_linetype_discrete("relative timing\nof catch and\nindex") +
   labs(y = expression(italic(SSB/B[MSY])))
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "timing.png"),
+
+ggsave(filename = "output/plots/paper_revision/timing.png",
        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "timing.pdf"),
+ggsave(filename = "output/plots/paper_revision/timing.pdf",
        width = 8.5, height = 6, units = "cm", dpi = 600)
 
 
@@ -690,54 +513,51 @@ ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
 ### perfect information/knowledge ####
 ### ------------------------------------------------------------------------ ###
 
-### 6515:6572 default
-### 8719:8776 perfect information
-
-### load scenarios
-scns <- scn_df %>% filter(scenario %in% c(6515:6572, 8719:8776) &
-                            fhist == "one-way")
-
-### load quants and calculate SSB/Bmsy
-qnts <- foreach(scenario = scns$scenario, stock = scns$stock,
-                .packages = "FLCore", .export = "refpts") %dopar% {
-  ### load SSB
-  ssb_i <- readRDS(paste0("output/perfect_knowledge/combined/corrected/",
-                          scenario, ".rds"))$ssb
-  ### calculate relative SSB
-  ssb_i <- ssb_i / c(refpts[[stock]]["msy", "ssb"])
-  ### use median only
-  ssb_i <- iterMedians(ssb_i)
-  ### return
-  return(ssb_i)
-}
-### format
-names(qnts) <- scns$scenario
-qnts <- FLQuants(qnts)
-qnts_df <- as.data.frame(qnts)
-qnts_df <- qnts_df %>%
-  mutate(scenario = as.numeric(as.character(qname)),
-         year = year - 100) %>%
-  ### perfect info has only 50 years
-  filter(year >= 1 & year <= 50) %>%
-  left_join(scns) %>%
-  left_join(lhist %>% select(stock, k)) %>%
-  mutate(info = ifelse(is.na(OM_scn), "default", "perfect\ninformation"),
-         wrap = paste0("italic(k)==", k, "~", paper)) %>%
-  filter(paper %in% c("ang", "rjc", "meg", "had", "lin", "mut", "whg", "her"))
-
-
-### plot SSB for all stocks
-qnts_df %>%
-  ggplot(aes(x = year, y = data, linetype = info)) +
-  geom_line(size = 0.2) +
+res <- readRDS(paste0(path_default, "plot_data_perfect.rds"))
+### plot  
+res %>% 
+  filter(qname %in% c("rjc2", "meg", "lin", "ang", "had", "syc2",
+                      "whg", "her"),
+         year >= 100) %>% 
+  ggplot(aes(x = year - 100, y = data, linetype = scenario)) +
   geom_hline(yintercept = 1, linetype = "dotted", size = 0.2) +
+  geom_line(size = 0.2) +
   theme_paper +
-  facet_wrap(~ wrap, labeller = label_parsed, ncol = 2) +
-  scale_linetype("scenario") +
-  labs(y = expression(SSB/B[MSY]))
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "perfect.png"),
+  facet_wrap(~ label2, labeller = label_parsed, ncol = 2) +
+  labs(x = "year", y = expression(SSB/B[MSY]), 
+       colour = "scenario")
+
+ggsave(filename = "output/plots/paper_revision/perfect.png",
        width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = paste0("output/perfect_knowledge/plots/paper/",
-                         "perfect.pdf"),
+ggsave(filename = "output/plots/paper_revision/perfect.pdf",
        width = 8.5, height = 10, units = "cm", dpi = 600)
+
+
+### ------------------------------------------------------------------------ ###
+### some replicates ####
+### ------------------------------------------------------------------------ ###
+
+tmp <- readRDS(paste0(path_default, "plot_data_replicates.rds"))
+
+tmp %>%
+  ggplot(aes(x = year - 100)) +
+  geom_col(aes(y = catch, fill = "catch")) +
+  scale_fill_manual("", values = c("grey60", "green")) +
+  geom_line(aes(y = ssb, colour = "SSB"), size = 0.2) + 
+  scale_colour_manual("", values = c("black", "green")) +
+  facet_grid(iter ~ label2, labeller = label_parsed) +
+  #scale_colour_manual(values = c("#00BFC4", "#F8766D")) +
+  theme_bw() +
+  theme_paper +
+  coord_cartesian(xlim = c(0, 20)) +
+  labs(x = "year",
+       y = expression(paste("relative value  ",
+                            "(catch/MSY, SSB/",
+                            ~B[MSY], ")")))# +
+  #theme(strip.text.y = element_blank())
+
+ggsave(filename = "output/plots/paper_revision/replicates.png",
+       width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/replicates.pdf",
+       width = 8.5, height = 12, units = "cm", dpi = 600)
+
