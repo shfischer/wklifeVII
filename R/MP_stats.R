@@ -44,7 +44,6 @@ registerDoParallel(cl)
 
 ### generic stuff
 refpts_all <- readRDS("input/refpts_paper.rds")
-stk_pos <- read.csv("input/stock_names_pos.csv")
 stocks <- read.csv("input/stock_list_full2.csv", stringsAsFactors = FALSE)
 names_short <- read.csv("input/names_short.csv", stringsAsFactors = FALSE)
 OM_scns <- read.csv("input/OM_scns.csv", stringsAsFactors = FALSE)
