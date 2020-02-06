@@ -54,6 +54,7 @@ The framework uses FLR and requires the following FLR packages:
   - `FLash`
   - `FLBRP`
   - `ggplotFL`
+  - `FLife`
   - `mseDL` (a fork of the FLR/mse package for data-limited MSE)
 
 The specific FLR package versions as used for the simulation can be
@@ -65,6 +66,7 @@ devtools::install_github(repo = "flr/FLCore", ref = "d55bc6570c0134c6bea6c3fc44b
 devtools::install_github(repo = "flr/FLash", ref = "7c47560cf57627068259404bb553f2b644682726")
 devtools::install_github(repo = "flr/FLBRP", ref = "142d5e14137c5ceb4526afd6718c26269ad81e7c")
 devtools::install_github(repo = "flr/ggplotFL", ref = "9b502a1aa01524637f4f269a3353a92c7d452db0")
+devtools::install_github(repo = "flr/FLife", ref = "d0cca5e574a77fb52ec607a25c244969b9c8dd38")
 devtools::install_github(repo = "shfischer/mse", ref = "80b5cf18dc9611f7307f599564ccdfbad433948d")
 ```
 
@@ -72,6 +74,6 @@ Furthermore, some more R packages available from CRAN are
 required:
 
 ``` r
-install.packages(c("foreach", "DoParallel", "dplyr", "tidyr", "data.table",
+install.packages(c("foreach", "doParallel", "dplyr", "tidyr", "data.table",
                    "doRNG", "dtwclust", "ggdendro", "glmnet")) 
 ```
