@@ -870,12 +870,22 @@ ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_selectivity.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
 
+### selectivity, the 2nd
+SSB_comparison(scns = c(38, 54:57), sort = TRUE,
+               label = "selectivity", 
+               values = c("default", "age +1", "age +2", "age +3", "age +4"))
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_selectivity_shift.png"),
+       width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+
+
+
 ### ------------------------------------------------------------------------ ###
 ### supplementary: sensitivity - stats ####
 ### ------------------------------------------------------------------------ ###
 
 ### load stats from scenarios
-stats_all <- lapply(c(29, 38:52), function(x) {
+stats_all <- lapply(c(29, c(38:52, 54:57)), function(x) {
   OM_scn <- OM_scns[OM_scns$idSEQ == x, ]
   tmp <- read.csv(paste0("output/",
                          ifelse(OM_scn$obs_error, "observation_error",
@@ -962,6 +972,19 @@ p_sel_after <- p_base +
   geom_point(aes(x = new_baseline, y = rev_sel_after), size = 0.5) +
   labs(x = "default selectivity", y = "selectivity\nafter maturity")
 
+p_sel_1 <- p_base + 
+  geom_point(aes(x = new_baseline, y = rev_sel_1), size = 0.5) +
+  labs(x = "default selectivity", y = "selectivity\nage +1")
+p_sel_2 <- p_base + 
+  geom_point(aes(x = new_baseline, y = rev_sel_2), size = 0.5) +
+  labs(x = "default selectivity", y = "selectivity\nage +2")
+p_sel_3 <- p_base + 
+  geom_point(aes(x = new_baseline, y = rev_sel_3), size = 0.5) +
+  labs(x = "default selectivity", y = "selectivity\nage +3")
+p_sel_4 <- p_base + 
+  geom_point(aes(x = new_baseline, y = rev_sel_4), size = 0.5) +
+  labs(x = "default selectivity", y = "selectivity\nage +4")
+
 ### recruitment sensitivity
 plot_grid(ph0.9, ph0.6, ph_l50linf, ph_k, ph_Myers, p_recSD0.3, p_recSD0.9,
           align = "vh", ncol = 1, labels = "auto")
@@ -981,5 +1004,10 @@ plot_grid(p_sel_before, p_sel_after,
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "stats_selectivity.png"),
        width = 25, height = 10, units = "cm", dpi = 300, type = "cairo-png")
-
+### selectivity, he 2nd
+plot_grid(p_sel_1, p_sel_2, p_sel_3, p_sel_4,
+          align = "vh", ncol = 1, labels = "auto")
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "stats_selectivity_shift.png"),
+       width = 25, height = 20, units = "cm", dpi = 300, type = "cairo-png")
 

@@ -52,3 +52,7 @@ rev_sel_before,gislason,500,100,0.6,0.6,0,,,NA,TRUE,NA,0.2,FALSE,0.2,before,50
 rev_sel_mat,gislason,500,100,0.6,0.6,0,,,NA,TRUE,NA,0.2,FALSE,0.2,maturity,51
 rev_sel_after,gislason,500,100,0.6,0.6,0,,,NA,TRUE,NA,0.2,FALSE,0.2,after,52
 rev_perfect,gislason,500,100,0.6,0.6,0,,,B_trigger,FALSE,NA,0,FALSE,0,NA,53
+rev_sel_1,gislason,500,100,0.6,0.6,0,,,NA,TRUE,NA,0.2,FALSE,0.2,shift_1,54
+rev_sel_2,gislason,500,100,0.6,0.6,0,,,NA,TRUE,NA,0.2,FALSE,0.2,shift_2,55
+rev_sel_3,gislason,500,100,0.6,0.6,0,,,NA,TRUE,NA,0.2,FALSE,0.2,shift_3,56
+rev_sel_4,gislason,500,100,0.6,0.6,0,,,NA,TRUE,NA,0.2,FALSE,0.2,shift_4,57

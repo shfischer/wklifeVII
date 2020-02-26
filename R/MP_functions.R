@@ -1710,7 +1710,8 @@ setMethod("fbar", signature(object = "FLStockLen"),
 # oneWayTrip {{{
 oneWayTrip <- function(stk, sr, brp, fmax=refpts(brp)['crash', 'harvest'] * 0.80,
                        years=seq(dims(stk)$minyear + 1, dims(stk)$maxyear),
-                       residuals=FLQuant(1, dimnames=dimnames(rec(stk))),f0=NULL) {
+                       residuals=FLQuant(1, dimnames=dimnames(rec(stk))),f0=NULL,
+                       effort_limit = TRUE) {
   
   # limits
   if(is.null(f0)){ 
@@ -1732,7 +1733,12 @@ oneWayTrip <- function(stk, sr, brp, fmax=refpts(brp)['crash', 'harvest'] * 0.80
   
   
   # fwd
-  res <- fwd(stk, control=as(FLQuants(f=ftar), "fwdControl"), sr=sr, residuals=residuals)
+  if (isFALSE(effort_limit)) {
+    res <- fwd(stk, control=as(FLQuants(f=ftar), "fwdControl"), sr=sr, residuals=residuals, effort_max = 100)
+  } else {
+    res <- fwd(stk, control=as(FLQuants(f=ftar), "fwdControl"), sr=sr, residuals=residuals)
+  }
+  
   
   return(res)
 } # }}}
@@ -1741,7 +1747,8 @@ oneWayTrip <- function(stk, sr, brp, fmax=refpts(brp)['crash', 'harvest'] * 0.80
 rollerCoaster <- function(stk, sr, brp, fmax=refpts(brp)['crash', 'harvest']*0.75,
                           fmsy=refpts(brp)['msy', 'harvest'], up=0.06, down=0.04,
                           years=seq(dims(stk)$minyear + 1, dims(stk)$maxyear),
-                          residuals=FLQuant(1, dimnames=dimnames(rec(stk))),f0=NULL) {
+                          residuals=FLQuant(1, dimnames=dimnames(rec(stk))),f0=NULL,
+                          effort_limit = TRUE) {
   
   # F
   f <- rep(NA, length(years))
@@ -1773,7 +1780,11 @@ rollerCoaster <- function(stk, sr, brp, fmax=refpts(brp)['crash', 'harvest']*0.7
   fctl <- fwdControl(data.frame(year=years, quant='f', value=f))
   
   # fwd
-  stk <- fwd(stk, control=fctl, sr=sr, residuals=residuals)
+  if (isFALSE(effort_limit)) {
+    stk <- fwd(stk, control=fctl, sr=sr, residuals=residuals, effort_max = 100)
+  } else {
+    stk <- fwd(stk, control=fctl, sr=sr, residuals=residuals)
+  }
   
   return(stk)
 } # }}}

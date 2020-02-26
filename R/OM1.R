@@ -183,6 +183,14 @@ brps <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
         sel. <- FLife::logistic(new_age, params)
         return(sel.)
       }
+    } else if (isTRUE(grepl(x = OM_scn$selectivity, pattern = "shift_"))) {
+      ### shift selectivity curve by ages:
+      shift <- an(strsplit(x = OM_scn$selectivity, split = "_")[[1]][2])
+      sel_def <- function(age, params) {
+        age_new <- age - shift
+        sel. <- FLife::dnormal(age = age_new, params = params)
+        return(sel.)
+      }
     }
   } else {
     sel_def <- FLife::dnormal
@@ -224,6 +232,7 @@ brps <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns)),
 
 ### save brps
 saveRDS(brps, file = "input/brps_paper.rds")
+#brps <- readRDS("input/brps_paper.rds")
 #saveRDS(brps[[1]], file = "input/brps.rds")
 # brps <- readRDS(file = "input/brps_wklife8.rds")
 # brps <- readRDS(file = "input/brps_paper.rds")
@@ -313,17 +322,21 @@ OMs <- foreach(OM_scn = split(OM_scns, 1:nrow(OM_scns))[scns],
   
   ### project last 25 years with 2 scenarios: one-way & roller-coaster
   years_target <- 76:100
+  ### effort limit
+  effort_limit <- ifelse(grepl(x = OM_scn$selectivity, "shift_"), FALSE, TRUE)
   ### one-way
   stk_one_way <- oneWayTrip(stk, sr = stk_sr, brp = i, years = years_target,
                             residuals = residuals[, ac(years_target)],
-                            f0 = refpts(i)["msy", "harvest"]*0.5)
+                            f0 = refpts(i)["msy", "harvest"]*0.5,
+                            effort_limit = effort_limit)
   
   ### roller-coaster
   stk_roller_coaster <- rollerCoaster(stk, sr = stk_sr, brp = i, 
                                       up = 0.2, down = 0.2, 
                                       years = years_target,
                                       residuals = residuals[, ac(years_target)],
-                                      f0 = refpts(i)["msy", "harvest"]*0.5)
+                                      f0 = refpts(i)["msy", "harvest"]*0.5,
+                                      effort_limit = effort_limit)
   
   ### extract life-history parameters
   lhpar <- attr(i, "lhpar")
