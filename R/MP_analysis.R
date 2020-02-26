@@ -6,6 +6,7 @@
 library(mseDL)
 library(tidyverse)
 library(doParallel)
+library(cowplot)
 
 stocks <- read.csv("input/stock_list_full2.csv", stringsAsFactors = FALSE)
 lhist <- read.csv("input/lhist_extended.csv", stringsAsFactors = FALSE)
@@ -20,6 +21,7 @@ stk_labels <- stocks %>%
          label2 = paste0("italic(k)==", k, "~~", stock))
 ### reference points
 refpts <- readRDS("input/refpts_paper.rds")$new_baseline
+brps <- readRDS("input/brps_paper.rds")
 
 theme_paper <- theme_bw(base_size = 8, base_family = "serif")
 
@@ -94,15 +96,25 @@ ggplot(data = df, aes(x = year, y = data)) +
 ### hierarchical clustering
 cl_one_way <- tsclust(SSBmat, 
                       type = "hierarchical",
-                      k = 10, distance = "dtw", seed = 1,
+                      k = 4, distance = "dtw", seed = 1,
                       trace = TRUE, error.check = TRUE)
 plot(cl_one_way)
 ### save
-saveRDS(cl_one_way, file = paste0(path_default, "corrected/one-way/cluster.rds"))
+saveRDS(cl_one_way, 
+        file = paste0(path_default, "corrected/one-way/cluster.rds"))
 
 clusters <- cl_one_way
 ### find all possible clusters and allocations of stocks to them
 cl_alloc <- cutree(clusters, k = 1:29)
+
+### replace cluster labels for nicer plotting
+cl_alloc[, 3] <- replace(cl_alloc[, 3], cl_alloc[, 3] == 2, 0)
+cl_alloc[, 3] <- replace(cl_alloc[, 3], cl_alloc[, 3] == 3, 2)
+cl_alloc[, 3] <- replace(cl_alloc[, 3], cl_alloc[, 3] == 0, 3)
+cl_alloc[, 4] <- replace(cl_alloc[, 4], cl_alloc[, 4] == 4, 0)
+cl_alloc[, 4] <- replace(cl_alloc[, 4], cl_alloc[, 4] == 2, 4)
+cl_alloc[, 4] <- replace(cl_alloc[, 4], cl_alloc[, 4] == 0, 2)
+
 
 ### stock SSB medians
 stock_medians <- clusters@datalist
@@ -169,7 +181,6 @@ dat_dend$labels$label <- as.character(dat_dend$labels$label)
 cl_alloc_dend <- as.data.frame(cl_alloc)
 cl_alloc_dend$label <- row.names(cl_alloc_dend)
 dat_dend$labels <- full_join(dat_dend$labels, cl_alloc_dend)
-
 
 ### save data for plotting
 saveRDS(list(curves = df_plot, dend = dat_dend, bars = cl_alloc_k),
@@ -435,6 +446,9 @@ min(ow_full$cvm)
 ### get cluster allocations 1-4
 cl_alloc <- readRDS(paste0(path_default, "corrected/one-way/cluster.rds"))
 cl_alloc <- cutree(cl_alloc, k = 4)
+cl_alloc[] <- replace(cl_alloc[], cl_alloc[] == 4, 0)
+cl_alloc[] <- replace(cl_alloc[], cl_alloc[] == 2, 4)
+cl_alloc[] <- replace(cl_alloc[], cl_alloc[] == 0, 2)
 cl_alloc <- data.frame(paper = names(cl_alloc), cluster = unlist(cl_alloc))
 
 ### get stats
@@ -762,7 +776,8 @@ values <- c(0.75, 0.9, 0.6)
 
 ### function for comparing SSB trajectories from different OM sets
 SSB_comparison <- function(scns, label, values, stks_subset, 
-                           nrow = NULL, ncol = NULL) {
+                           nrow = NULL, ncol = NULL,
+                           sort = FALSE) {
   
   ### stock labels
   stk_labels <- stocks %>%
@@ -796,6 +811,9 @@ SSB_comparison <- function(scns, label, values, stks_subset,
   if (!missing(stks_subset)) {
     res <- res %>% filter(stock %in% stks_subset)
   }
+  
+  ### sort scenarios
+  if (isTRUE(sort)) res$scenario <- factor(res$scenario, levels = values)
   
   ### plot  
   p <- res %>% 

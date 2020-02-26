@@ -90,6 +90,9 @@ plot_grid(plot_ssb_rel, plot_fbar_rel, plot_catch_rel,
 ### and save
 ggsave(filename = "output/plots/paper_revision/trajectories_rel.png",
        width = 17, height = 7, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/trajectories_rel.jpeg", 
+       quality = 100,
+       width = 17, height = 7, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/trajectories_rel.pdf",
        width = 17, height = 7, units = "cm", dpi = 600)
 
@@ -108,9 +111,9 @@ p1 <- ggplot(data = glmnet_res$data,
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
     intercept = c(glmnet_res$glmnet$f_rel["(Intercept)",],
-                  lms[lms$var == "f_rel", "Intercept"]),
+                  glmnet_res$lms[glmnet_res$lms$var == "f_rel", "Intercept"]),
     slope = c(glmnet_res$glmnet$f_rel_new["k",],
-              lms[lms$var == "f_rel", "k"]),
+              glmnet_res$lms[glmnet_res$lms$var == "f_rel", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
@@ -122,9 +125,9 @@ p2 <- ggplot(data = glmnet_res$data,
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
     intercept = c(glmnet_res$glmnet$ssb_rel["(Intercept)",],
-                  lms[lms$var == "ssb_rel", "Intercept"]),
+                  glmnet_res$lms[glmnet_res$lms$var == "ssb_rel", "Intercept"]),
     slope = c(glmnet_res$glmnet$ssb_rel["k",],
-              lms[lms$var == "ssb_rel", "k"]),
+              glmnet_res$lms[glmnet_res$lms$var == "ssb_rel", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
@@ -136,9 +139,10 @@ p3 <- ggplot(data = glmnet_res$data,
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
     intercept = c(glmnet_res$glmnet$risk_collapse["(Intercept)",],
-                  lms[lms$var == "risk_collapse", "Intercept"]),
+                  glmnet_res$lms[glmnet_res$lms$var == "risk_collapse", 
+                                 "Intercept"]),
     slope = c(glmnet_res$glmnet$risk_collapse["k",],
-              lms[lms$var == "risk_collapse", "k"]),
+              glmnet_res$lms[glmnet_res$lms$var == "risk_collapse", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
@@ -150,9 +154,10 @@ p4 <- ggplot(data = glmnet_res$data,
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
     intercept = c(glmnet_res$glmnet$risk_blim["(Intercept)",],
-                  lms[lms$var == "risk_blim", "Intercept"]),
+                  glmnet_res$lms[glmnet_res$lms$var == "risk_blim", 
+                                 "Intercept"]),
     slope = c(glmnet_res$glmnet$risk_blim["k",],
-              lms[lms$var == "risk_blim", "k"]),
+              glmnet_res$lms[glmnet_res$lms$var == "risk_blim", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
@@ -164,9 +169,10 @@ p5 <- ggplot(data = glmnet_res$data[, ],
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = data.frame(
     intercept = c(glmnet_res$glmnet$yield_rel["(Intercept)",],
-                  lms[lms$var == "yield_rel", "Intercept"]),
+                  glmnet_res$lms[glmnet_res$lms$var == "yield_rel", 
+                                 "Intercept"]),
     slope = c(glmnet_res$glmnet$yield_rel["k",],
-              lms[lms$var == "yield_rel", "k"]),
+              glmnet_res$lms[glmnet_res$lms$var == "yield_rel", "k"]),
     model = c("lasso regression", "linear regression")),
     aes(intercept = intercept, slope = slope, linetype = model), size = 0.3, 
     show.legend = FALSE) +
@@ -176,12 +182,13 @@ p6 <- ggplot(data = glmnet_res$data[, ],
   geom_point(size = 0.3) + theme_paper + 
   lims(x = c(0, NA), y = c(0, NA)) +
   geom_abline(data = 
-                data.frame(intercept = c(glmnet_res$glmnet$iav["(Intercept)",],
-                                              lms[lms$var == "iav", "Intercept"]),
-                           slope = c(glmnet_res$glmnet$iav["k",],
-                                          lms[lms$var == "iav", "k"]),
-                           model = c("lasso\nregression", 
-                                          "linear\nregression")),
+    data.frame(intercept = c(glmnet_res$glmnet$iav["(Intercept)",],
+                             glmnet_res$lms[glmnet_res$lms$var == "iav",
+                                            "Intercept"]),
+               slope = c(glmnet_res$glmnet$iav["k",],
+                         glmnet_res$lms[glmnet_res$lms$var == "iav", "k"]),
+               model = c("lasso\nregression", 
+                              "linear\nregression")),
               aes(intercept = intercept, slope = slope, linetype = model),
               size = 0.3) +
   labs(y = "ICV", x = expression(italic(k))) +
@@ -196,6 +203,8 @@ plot_grid(plot_grid(p1, p2, p3, p4, p5, p6 + theme(legend.position = "none"),
 
 ### save plot
 ggsave(filename = "output/plots/paper_revision/glmnet.png",
+       width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/glmnet.jpeg", quality = 100,
        width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/glmnet.pdf",
        width = 8.5, height = 12, units = "cm", dpi = 600)
@@ -282,6 +291,8 @@ plot_grid(p4, plot_grid(p1, p2, ncol = 2, rel_widths = c(1.7, 1),
 
 ggsave(filename = "output/plots/paper_revision/clustering.png",
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/clustering.jpeg", quality = 100,
+       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/clustering.pdf",
        width = 17, height = 13, units = "cm", dpi = 600)
 
@@ -349,6 +360,8 @@ plot_grid(plot_grid(p1, p2, p3, p4, p5, p6 + theme(legend.position = "none"),
           legend, ncol = 2, rel_widths = c(3, 0.2))
 
 ggsave(filename = "output/plots/paper_revision/multiplier.png",
+       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/multiplier.jpeg", quality = 100,
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/multiplier.pdf",
        width = 17, height = 13, units = "cm", dpi = 600)
@@ -448,7 +461,9 @@ plot_grid(plot_grid(p_upper, p_lower, ncol = 1, labels = c("A", "B"),
           legend, rel_widths = c(3, 0.2))
 
 
-ggsave(filename = "output/plots/paper_revision/consraints.png",
+ggsave(filename = "output/plots/paper_revision/constraints.png",
+       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/constraints.jpeg", quality = 100,
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/constraints.pdf",
        width = 17, height = 13, units = "cm", dpi = 600)
@@ -459,7 +474,7 @@ ggsave(filename = "output/plots/paper_revision/constraints.pdf",
 ### ------------------------------------------------------------------------ ###
 
 
-df_comps_perc <- readRDS(paste0(path, "components_data_plot.rds"))
+df_comps_perc <- readRDS(paste0(path_default, "plot_data_components.rds"))
 
 ### plot
 p <- df_comps_perc %>%
@@ -484,6 +499,8 @@ p
 
 ggsave(filename = "output/plots/paper_revision/components.png",
        width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/components.jpeg", quality = 100,
+       width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/components.pdf",
        width = 8.5, height = 10, units = "cm", dpi = 600)
 
@@ -492,7 +509,7 @@ ggsave(filename = "output/plots/paper_revision/components.pdf",
 ### data timing ####
 ### ------------------------------------------------------------------------ ###
 
-res <- readRDS(paste0(path, "plot_data_timing.rds"))
+res <- readRDS(paste0(path_default, "plot_data_timing.rds"))
 ### plot SSB 
 res %>% filter(stock %in% c("ang", "pol", "ane", "her")) %>%
   ggplot(aes(x = year, y = data, linetype = timing, colour = as.factor(TAC))) +
@@ -504,6 +521,8 @@ res %>% filter(stock %in% c("ang", "pol", "ane", "her")) %>%
   labs(y = expression(italic(SSB/B[MSY])))
 
 ggsave(filename = "output/plots/paper_revision/timing.png",
+       width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/timing.jpeg", quality = 100,
        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/timing.pdf",
        width = 8.5, height = 6, units = "cm", dpi = 600)
@@ -528,6 +547,8 @@ res %>%
        colour = "scenario")
 
 ggsave(filename = "output/plots/paper_revision/perfect.png",
+       width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/perfect.jpeg", quality = 100,
        width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/perfect.pdf",
        width = 8.5, height = 10, units = "cm", dpi = 600)
@@ -557,6 +578,8 @@ tmp %>%
   #theme(strip.text.y = element_blank())
 
 ggsave(filename = "output/plots/paper_revision/replicates.png",
+       width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper_revision/replicates.jpeg", quality = 100,
        width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/paper_revision/replicates.pdf",
        width = 8.5, height = 12, units = "cm", dpi = 600)
