@@ -15,7 +15,6 @@ library(doParallel)
 path_default <- "output/observation_error/new_baseline/"
 
 ### load lhist
-lhist <- readRDS("input/lhist_extended.rds")
 stocks <- read.csv("input/stock_list_full2.csv", stringsAsFactors = FALSE)
 ### reference points
 refpts <- readRDS("input/refpts.rds")
@@ -539,7 +538,7 @@ res %>%
                       "whg", "her"),
          year >= 100) %>% 
   ggplot(aes(x = year - 100, y = data, linetype = scenario)) +
-  geom_hline(yintercept = 1, linetype = "dotted", size = 0.2) +
+  geom_hline(yintercept = 1, linetype = "solid", size = 0.2, colour = "grey") +
   geom_line(size = 0.2) +
   theme_paper +
   facet_wrap(~ label2, labeller = label_parsed, ncol = 2) +
