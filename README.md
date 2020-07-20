@@ -1,4 +1,4 @@
-length-based catch rule
+length-based empirical data-limited catch rule
 ================
 
 # FLR data-limited MSE for ICES WKLIFE
@@ -14,11 +14,21 @@ developed during the Workshop on development of MSE algorithms with
 R/FLR/a4a ([Jardim et
 al., 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
+The repository contains the source code for the work published in:
+
+> Simon H. Fischer, José A. A. De Oliveira, Laurence T. Kell (2020).
+> Linking the performance of a data-limited empirical catch rule to
+> life-history traits, ICES Journal of Marine Science,
+> <https://doi.org/10.1093/icesjms/fsaa054>.
+
+The state of the code for the publication is stored in release v1.0
+(<https://github.com/shfischer/wklifeVII/releases/tag/v1.0>).
+
 ## Repository structure
 
 The repository contains the following R scripts in the `R/` directory:
 
-  - `OM1.R` & `OM2.R`: Script for creating the operating models for 29
+  - `OM1.R` & `OM2.R`: Scripts for creating the operating models for 29
     data-limited fish stocks,
   - `MP.R`: script for running the MSE scenarios and is called from a
     job submission script,
@@ -58,8 +68,7 @@ The framework uses FLR and requires the following FLR packages:
   - `mseDL` (a fork of the FLR/mse package for data-limited MSE)
 
 The specific FLR package versions as used for the simulation can be
-installed with
-`devtools`:
+installed with `devtools`:
 
 ``` r
 devtools::install_github(repo = "flr/FLCore", ref = "d55bc6570c0134c6bea6c3fc44be20378691e042")
@@ -70,8 +79,7 @@ devtools::install_github(repo = "flr/FLife", ref = "d0cca5e574a77fb52ec607a25c24
 devtools::install_github(repo = "shfischer/mse", ref = "80b5cf18dc9611f7307f599564ccdfbad433948d")
 ```
 
-Furthermore, some more R packages available from CRAN are
-required:
+Furthermore, some more R packages available from CRAN are required:
 
 ``` r
 install.packages(c("foreach", "doParallel", "dplyr", "tidyr", "data.table",

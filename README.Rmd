@@ -1,5 +1,5 @@
 ---
-title: "length-based catch rule"
+title: "length-based empirical data-limited catch rule"
 output: github_document
 ---
 
@@ -14,11 +14,17 @@ knitr::opts_chunk$set(echo = TRUE)
 This repository contains the Management Strategy Evaluation (MSE) for the ICES data-limited catch rule as presented during ICES WKLIFE VII, VIII and IX.
 The simulation is based on the Fisheries Library in R ([FLR](http://www.flr-project.org/)) and makes use of the Assessment for All (a4a) standard MSE framework ([`FLR/mse`](github.com/FLR/mse)) developed during the Workshop on development of MSE algorithms with R/FLR/a4a ([Jardim et al., 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
+The repository contains the source code for the work published in:
+
+> Simon H. Fischer, José A. A. De Oliveira, Laurence T. Kell (2020). Linking the performance of a data-limited empirical catch rule to life-history traits, ICES Journal of Marine Science, https://doi.org/10.1093/icesjms/fsaa054.
+
+The state of the code for the publication is stored in release v1.0 (https://github.com/shfischer/wklifeVII/releases/tag/v1.0).
+
 ## Repository structure
 
 The repository contains the following R scripts in the `R/` directory:
 
-* `OM1.R` & `OM2.R`: Script for creating the operating models for 29 data-limited fish stocks,
+* `OM1.R` & `OM2.R`: Scripts for creating the operating models for 29 data-limited fish stocks,
 * `MP.R`: script for running the MSE scenarios and is called from a job submission script, 
 * `MP_stats.R`: script for post processing the results from `MP.R`,
 * `MP_analysis.R`: script for analysing the results,
