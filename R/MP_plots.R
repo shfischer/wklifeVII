@@ -89,10 +89,7 @@ plot_grid(plot_ssb_rel, plot_fbar_rel, plot_catch_rel,
 ### and save
 ggsave(filename = "output/plots/paper_revision/trajectories_rel.png",
        width = 17, height = 7, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/trajectories_rel.jpeg", 
-       quality = 100,
-       width = 17, height = 7, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/trajectories_rel.pdf",
+ggsave(filename = "output/plots/paper_revision/final/Figure1_trajectories_rel.pdf",
        width = 17, height = 7, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
@@ -203,9 +200,7 @@ plot_grid(plot_grid(p1, p2, p3, p4, p5, p6 + theme(legend.position = "none"),
 ### save plot
 ggsave(filename = "output/plots/paper_revision/glmnet.png",
        width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/glmnet.jpeg", quality = 100,
-       width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/glmnet.pdf",
+ggsave(filename = "output/plots/paper_revision/final/Figure4_glmnet.pdf",
        width = 8.5, height = 12, units = "cm", dpi = 600)
 
 
@@ -221,7 +216,7 @@ cluster <- readRDS(paste0(path_default,
 ### plot
 p1 <- ggplot(cluster$curves[cluster$curves$k %in% 1:4, ],
              aes(x = year, y = value, group = stock, 
-                 linetype = stock == "cluster", alpha = stock == "cluster",
+                 linetype = stock == "cluster",# alpha = stock == "cluster",
                  size = stock == "cluster", colour = as.factor(cluster))) +
   geom_line() + 
   facet_grid(ifelse(k > 1, 
@@ -230,8 +225,9 @@ p1 <- ggplot(cluster$curves[cluster$curves$k %in% 1:4, ],
   theme_paper +
   scale_linetype_manual("", values = c("longdash", "solid"), 
                         labels = c("stock", "cluster")) +
-  scale_alpha_manual("", values = c(0.7, 1), 
-                     labels = c("stock", "cluster")) +
+  ### remove alpha for better rendering in final paper version
+  # scale_alpha_manual("", values = c(0.7, 1), 
+  #                    labels = c("stock", "cluster")) +
   scale_size_manual("", values = c(0.15, 0.5), 
                     labels = c("stock", "cluster")) +
   scale_colour_discrete(guide = FALSE) +
@@ -284,16 +280,55 @@ p4 <- ggplot(segment(cluster$dend) %>%
   labs(y = "DTW distance")
 
 plot_grid(p4, plot_grid(p1, p2, ncol = 2, rel_widths = c(1.7, 1), 
-                        labels = c("B", "C"), label_fontfamily = "serif"),
-          nrow = 2, rel_heights = c(1, 2), labels = c("A", ""), 
-          label_fontfamily = "serif")
+                        labels = c("(b)", "(c)"), label_fontfamily = "serif", 
+                        label_size = 10, hjust = -0.25, vjust = 1.3),
+          nrow = 2, rel_heights = c(1, 2), labels = c("(a)", ""), 
+          label_fontfamily = "serif", label_size = 10, 
+          hjust = -0.25, vjust = 1.3)
 
 ggsave(filename = "output/plots/paper_revision/clustering.png",
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/clustering.jpeg", quality = 100,
-       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/clustering.pdf",
+ggsave(filename = "output/plots/paper_revision/final/Figure5_clustering_updated.pdf",
        width = 17, height = 13, units = "cm", dpi = 600)
+
+### figure optimised for poster
+theme_poster <- theme_bw(base_size = 12, base_family = "sans")
+### plot
+p1_ <- p1 + theme_poster +
+  theme(legend.position = c(0.87, 0.87),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        strip.text.y = element_blank())
+p2_ <- p2 + theme_poster +
+  theme(axis.text.x = element_text(colour = "white"),
+        axis.ticks.x = element_blank(),
+        strip.background.x = element_blank())
+p4_ <- ggplot(segment(cluster$dend) %>%
+               mutate(yend = ifelse(yend == 0, -2, yend))) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.4) +
+  geom_text(data = label(cluster$dend),
+            aes(label = label, x = x, y = -2, colour = as.factor(`4`)),
+            show.legend = FALSE, hjust = 1, angle = 90, nudge_y = -2,
+            family = "sans", size = 3.75) +
+  coord_cartesian(ylim = c(-30, max(cluster$dend$segments$y))) + 
+  theme_poster +
+  theme(panel.grid = element_blank(), 
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.title.x = element_blank(),#element_text(colour = NA),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(y = "DTW distance")
+plot_grid(p4_, plot_grid(p1_, p2_, ncol = 2, rel_widths = c(1.7, 1), 
+                        labels = c("(b)", "(c)"), label_fontfamily = "sans", 
+                        label_size = 14, hjust = -0.25, vjust = 1.3),
+          nrow = 2, rel_heights = c(0.9, 2), labels = c("(a)", ""), 
+          label_fontfamily = "sans", label_size = 14, 
+          hjust = -0.25, vjust = 1.3)
+ggsave(filename = "output/plots/paper_revision/clustering_poster.png",
+       width = 25, height = 19, units = "cm", dpi = 600, type = "cairo")
 
 
 ### ------------------------------------------------------------------------ ###
@@ -360,9 +395,7 @@ plot_grid(plot_grid(p1, p2, p3, p4, p5, p6 + theme(legend.position = "none"),
 
 ggsave(filename = "output/plots/paper_revision/multiplier.png",
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/multiplier.jpeg", quality = 100,
-       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/multiplier.pdf",
+ggsave(filename = "output/plots/paper_revision/Figure6_multiplier.pdf",
        width = 17, height = 13, units = "cm", dpi = 600)
 
 
@@ -455,16 +488,14 @@ p_upper <- plot_grid(p1, p2, p3 + theme(legend.position = "none"),
                      nrow = 1, align = "hv")
 p_lower <- plot_grid(p4, p5, p6 + theme(legend.position = "none"),
                     nrow = 1, align = "hv")
-plot_grid(plot_grid(p_upper, p_lower, ncol = 1, labels = c("A", "B"), 
-                    label_fontfamily = "serif"),
+plot_grid(plot_grid(p_upper, p_lower, ncol = 1, labels = c("(a)", "(b)"), 
+                    label_fontfamily = "serif", label_size = 10),
           legend, rel_widths = c(3, 0.2))
 
 
 ggsave(filename = "output/plots/paper_revision/constraints.png",
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/constraints.jpeg", quality = 100,
-       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/constraints.pdf",
+ggsave(filename = "output/plots/paper_revision/final/Figure7_constraints_updated.pdf",
        width = 17, height = 13, units = "cm", dpi = 600)
 
 
@@ -498,9 +529,7 @@ p
 
 ggsave(filename = "output/plots/paper_revision/components.png",
        width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/components.jpeg", quality = 100,
-       width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/components.pdf",
+ggsave(filename = "output/plots/paper_revision/final/Figure2_components.pdf",
        width = 8.5, height = 10, units = "cm", dpi = 600)
 
 
@@ -521,9 +550,7 @@ res %>% filter(stock %in% c("ang", "pol", "ane", "her")) %>%
 
 ggsave(filename = "output/plots/paper_revision/timing.png",
        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/timing.jpeg", quality = 100,
-       width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/timing.pdf",
+ggsave(filename = "output/plots/paper_revision/final/Figure_8_timing.pdf",
        width = 8.5, height = 6, units = "cm", dpi = 600)
 
 
@@ -542,14 +569,12 @@ res %>%
   geom_line(size = 0.2) +
   theme_paper +
   facet_wrap(~ label2, labeller = label_parsed, ncol = 2) +
-  labs(x = "year", y = expression(SSB/B[MSY]), 
+  labs(x = "year", y = expression(italic(SSB)/italic(B)[italic(MSY)]), 
        colour = "scenario")
 
 ggsave(filename = "output/plots/paper_revision/perfect.png",
        width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/perfect.jpeg", quality = 100,
-       width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/perfect.pdf",
+ggsave(filename = "output/plots/paper_revision/final/Figure9_perfect.pdf",
        width = 8.5, height = 10, units = "cm", dpi = 600)
 
 
@@ -578,8 +603,6 @@ tmp %>%
 
 ggsave(filename = "output/plots/paper_revision/replicates.png",
        width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/replicates.jpeg", quality = 100,
-       width = 8.5, height = 12, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper_revision/replicates.pdf",
+ggsave(filename = "output/plots/paper_revision/final/Figure3_replicates.pdf",
        width = 8.5, height = 12, units = "cm", dpi = 600)
 
