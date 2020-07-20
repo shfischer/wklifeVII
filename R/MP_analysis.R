@@ -832,6 +832,11 @@ SSB_comparison(scns = 38:40, label = "steepness", values = c(0.75, 0.9, 0.6))
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_h_levels.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = 38:40, label = "steepness", values = c(0.75, 0.9, 0.6)) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_h_levels.pdf"),
+       width = 17, height = 15, units = "cm")
 
 ### h functional relationships
 SSB_comparison(scns = c(38, 41, 42), label = "steepness", 
@@ -839,6 +844,12 @@ SSB_comparison(scns = c(38, 41, 42), label = "steepness",
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_h_functional.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = c(38, 41, 42), label = "steepness", 
+               values = c("h=0.75", "h~k", "h~L50/Linf")) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_h_functional.pdf"),
+       width = 17, height = 13, units = "cm")
 
 ### h from Myers
 SSB_comparison(scns = c(38, 43), label = "steepness", nrow = 3,
@@ -848,6 +859,14 @@ SSB_comparison(scns = c(38, 43), label = "steepness", nrow = 3,
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_h_Myers.png"),
        width = 20, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = c(38, 43), label = "steepness", nrow = 3,
+               values = c(0.75, "Myers et\nal. (1999)"),
+               stks_subset = c("ang3", "smn", "ang", "ang2", "pol", "had",
+                               "sbb", "ple", "whg", "lem", "ane", "sar", "her")) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_h_Myers.pdf"),
+       width = 17, height = 8.5, units = "cm")
 
 ### recruitment sd
 SSB_comparison(scns = c(38, 29, 44), label = "recruitment\nvariability\n(sd)", 
@@ -855,6 +874,12 @@ SSB_comparison(scns = c(38, 29, 44), label = "recruitment\nvariability\n(sd)",
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_rec_sd.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = c(38, 29, 44), label = "recruitment\nvariability\n(sd)", 
+               values = c("0.6", "0.3", "0.9")) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_rec_sd.pdf"),
+       width = 17, height = 13, units = "cm")
 
 ### index sd
 SSB_comparison(scns = c(38, 45, 46), label = "index\nuncertainty\n(sd)", 
@@ -862,6 +887,12 @@ SSB_comparison(scns = c(38, 45, 46), label = "index\nuncertainty\n(sd)",
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_idx_sd.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = c(38, 45, 46), label = "index\nuncertainty\n(sd)", 
+               values = c(0.2, 0.4, 0.6)) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_idx_sd.pdf"),
+       width = 17, height = 13, units = "cm")
 
 ### length frequency sd
 SSB_comparison(scns = c(38, 47, 48), 
@@ -870,6 +901,13 @@ SSB_comparison(scns = c(38, 47, 48),
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_lngth_sd.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = c(38, 47, 48), 
+               label = "length\nfrequency\nuncertainty\n(sd)", 
+               values = c(0.2, 0.4, 0.6)) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_lngth_sd.pdf"),
+       width = 17, height = 13, units = "cm")
 
 ### length frequency and index sd
 SSB_comparison(scns = c(38, 49), 
@@ -878,6 +916,13 @@ SSB_comparison(scns = c(38, 49),
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_idx_lngth_sd.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = c(38, 49), 
+               label = "index and\nlength\nfrequency\nuncertainty\n(sd)", 
+               values = c(0.2, 0.4)) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_idx_lngth_sd.pdf"),
+       width = 17, height = 13, units = "cm")
 
 ### selectivity
 SSB_comparison(scns = c(38, 50, 52), 
@@ -887,6 +932,14 @@ SSB_comparison(scns = c(38, 50, 52),
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_selectivity.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = c(38, 50, 52), 
+               label = "selectivity", 
+               values = c("default", "before\nmaturity",
+                          "after\nmaturity")) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_selectivity.pdf"),
+       width = 17, height = 13, units = "cm")
 
 ### selectivity, the 2nd
 SSB_comparison(scns = c(38, 54:57), sort = TRUE,
@@ -895,6 +948,13 @@ SSB_comparison(scns = c(38, 54:57), sort = TRUE,
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "SSB_selectivity_shift.png"),
        width = 20, height = 15, units = "cm", dpi = 300, type = "cairo-png")
+SSB_comparison(scns = c(38, 54:57), sort = TRUE,
+               label = "selectivity", 
+               values = c("default", "age +1", "age +2", "age +3", "age +4")) +
+  theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "SSB_selectivity_shift.pdf"),
+       width = 17, height = 13, units = "cm")
 
 
 
@@ -1009,6 +1069,15 @@ plot_grid(ph0.9, ph0.6, ph_l50linf, ph_k, ph_Myers, p_recSD0.3, p_recSD0.9,
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "stats_steepness.png"),
        width = 25, height = 35, units = "cm", dpi = 300, type = "cairo-png")
+plot_grid(ph0.9 + theme_bw(base_size = 8), ph0.6 + theme_bw(base_size = 8), 
+          ph_l50linf + theme_bw(base_size = 8), ph_k + theme_bw(base_size = 8), 
+          ph_Myers + theme_bw(base_size = 8), 
+          p_recSD0.3 + theme_bw(base_size = 8), 
+          p_recSD0.9 + theme_bw(base_size = 8),
+          align = "vh", ncol = 1, labels = "auto")
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "stats_steepness.pdf"),
+       width = 17, height = 20, units = "cm")
 ### survey uncertainty
 plot_grid(p_idxSD0.4, p_idxSD0.6, p_lengthSD0.4, p_lengthSD0.6, 
           p_idxSD0.4_lengthSD0.4,
@@ -1016,19 +1085,39 @@ plot_grid(p_idxSD0.4, p_idxSD0.6, p_lengthSD0.4, p_lengthSD0.6,
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "stats_uncertainty.png"),
        width = 25, height = 25, units = "cm", dpi = 300, type = "cairo-png")
+plot_grid(p_idxSD0.4 + theme_bw(base_size = 8), 
+          p_idxSD0.6 + theme_bw(base_size = 8), 
+          p_lengthSD0.4 + theme_bw(base_size = 8), 
+          p_lengthSD0.6 + theme_bw(base_size = 8), 
+          p_idxSD0.4_lengthSD0.4 + theme_bw(base_size = 8),
+          align = "vh", ncol = 1, labels = "auto")
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "stats_uncertainty.pdf"),
+       width = 17, height = 14, units = "cm")
 ### selectivity
 plot_grid(p_sel_before, p_sel_after,
           align = "vh", ncol = 1, labels = "auto")
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "stats_selectivity.png"),
        width = 25, height = 10, units = "cm", dpi = 300, type = "cairo-png")
+plot_grid(p_sel_before + theme_bw(base_size = 8), 
+          p_sel_after + theme_bw(base_size = 8),
+          align = "vh", ncol = 1, labels = "auto")
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "stats_selectivity.pdf"),
+       width = 17, height = 7, units = "cm")
 ### selectivity, he 2nd
 plot_grid(p_sel_1, p_sel_2, p_sel_3, p_sel_4,
           align = "vh", ncol = 1, labels = "auto")
 ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "stats_selectivity_shift.png"),
        width = 25, height = 20, units = "cm", dpi = 300, type = "cairo-png")
-
+plot_grid(p_sel_1 + theme_bw(base_size = 8), p_sel_2 + theme_bw(base_size = 8), 
+          p_sel_3 + theme_bw(base_size = 8), p_sel_4 + theme_bw(base_size = 8),
+          align = "vh", ncol = 1, labels = "auto")
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "stats_selectivity_shift.pdf"),
+       width = 17, height = 14, units = "cm")
 
 ### ------------------------------------------------------------------------ ###
 ### check selectivity curves ####
@@ -1456,3 +1545,4 @@ refpts(brps$rev_sel_3$`pol-nsea`)
 plot(as(brps$new_baseline$`pol-nsea`, "FLStock"))
 plot(as(brps$rev_sel_1$`pol-nsea`, "FLStock"))
 plot(as(brps$rev_sel_2$`pol-nsea`, "FLStock"))
+plot(as(brps$rev_sel_3$`pol-nsea`, "FLStock"))
