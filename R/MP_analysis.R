@@ -1029,3 +1029,430 @@ ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
                          "stats_selectivity_shift.png"),
        width = 25, height = 20, units = "cm", dpi = 300, type = "cairo-png")
 
+
+### ------------------------------------------------------------------------ ###
+### check selectivity curves ####
+### ------------------------------------------------------------------------ ###
+
+brps <- readRDS("input/brps_paper.rds")
+
+stock <- "pol-nsea"
+stock <- "her-nis"
+scenarios <- c("new_baseline", "rev_sel_1", "rev_sel_2", "rev_sel_3", 
+               "rev_sel_4")
+names(scenarios) <- scenarios
+
+
+sels <- lapply(scenarios, function(x) {#browser()
+  cbind(as.data.frame(brps[[x]][[stock]]@landings.sel), scenario = x)
+})
+sels <- do.call(rbind, sels)
+sels %>% group_by(scenario) %>%
+  mutate(data2 = data/max(data)) %>%
+  ggplot(aes(x = age, y = data2, colour = scenario)) +
+  geom_line()
+
+
+df <- foreach(paper = stocks$stock_short,
+        stock = stocks$stock,
+        .combine = rbind) %do% {#browser()
+  brp <- brps$new_baseline[[stock]]
+  lhpar <- brp@lhpar
+  m.spwn <- c(lhpar["a50"] - floor(lhpar["a50"]))
+  fish <- 0.5
+  ages <- seq(from = 0, to = dims(brp)$max, by = 0.1)
+  ages_qnt <- FLQuant(ages, dimnames = list(age = ages))
+  ### maturity
+  mat <- FLife::logistic(ages_qnt + m.spwn, params = lhpar)
+  ### default selectivity
+  sel <- FLife::dnormal(ages_qnt + fish,  lhpar)
+  ### shift selectivity
+  sel_1 <- FLife::dnormal(ages_qnt + fish - 1,  lhpar)
+  sel_2 <- FLife::dnormal(ages_qnt + fish - 2,  lhpar)
+  sel_3 <- FLife::dnormal(ages_qnt + fish - 3,  lhpar)
+  sel_4 <- FLife::dnormal(ages_qnt + fish - 4,  lhpar)
+  # ### selectivity before maturity
+  # sel_before <- FLife::logistic(ages_qnt + m.spwn + 2*c(lhpar["ato95"]),
+  #                               params = lhpar)
+  # ### selectivity after maturity
+  # sel_after <- FLife::logistic(ages_qnt + m.spwn - 2*c(lhpar["ato95"]),
+  #                               params = lhpar)
+  ### combine
+  data.frame(age = ages,
+             mat = c(mat),
+             sel = c(sel), sel_1 = c(sel_1), sel_2 = c(sel_2), 
+             sel_3 = c(sel_3), sel_4 = c(sel_4),
+             stock = paper)
+        }
+df <- df %>%
+  full_join(stk_labels) %>% 
+  mutate(label = as.factor(label),
+         label2 = as.factor(label2))
+df$label <- factor(df$label, levels = levels(df$label)[c(1:19, 21, 20, 22:29)])
+df$label2 <- factor(df$label2, 
+                    levels = levels(df$label2)[c(1:19, 21, 20, 22:29)])
+df <- df %>% 
+  rename("age +1" = sel_1, "age +2" = sel_2,
+         "age +3" = sel_3, "age +4" = sel_4) %>%
+  gather(key = "key", value = "value", 2:7)
+df2 <- df %>% 
+  mutate(key = as.factor(key))
+df2$key <- factor(df2$key, levels = levels(df2$key)[c(5, 6, 1:4)])
+int_breaks <- function(x, n = 5) 
+  pretty(x, n)[pretty(x, n) %% 1 == 0] 
+p <- df2 %>%
+  #filter(stock == "ang") %>%
+  ggplot(aes(x = age, y = value, colour = key, linetype = key)) +
+  geom_line() +
+  geom_point(data = df2 %>% filter((age %% 1) == 0 & age >= 1), size = 0.5) + 
+  scale_color_manual("", values = c("black", scales::hue_pal()(5))) +
+  scale_linetype_manual("", values = c("dotted", rep("solid", 5))) +
+  scale_x_continuous(breaks = int_breaks) +
+  theme_bw() +
+  facet_wrap(~ label2, scales = "free_x", labeller = label_parsed) +
+  labs(x = "age", y = "selectivity")
+p
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "selectivity.png"),
+       width = 25, height = 20, units = "cm", dpi = 300, type = "cairo-png")
+p + theme_bw(base_size = 8)
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "selectivity.pdf"),
+       width = 17, height = 14, units = "cm")
+
+
+
+
+### function for comparing SSB trajectories from different OM sets
+plot_stock(scn = "new_baseline", stk = "her")
+plot_stock <- function(scn, stk) {
+  
+  ### stock labels
+  stk_labels <- stocks %>%
+    select(stock_short, k) %>%
+    mutate(stock = stock_short,
+           label = paste0("k = ", k, ", ", stock),
+           label2 = paste0("italic(k)==", k, "~~", stock))
+  
+  res <- lapply(seq_along(scns), function(i_scn) {#browser()
+    tmp <- lapply(seq_along(stocks$stock), function(i_stock) {
+      qnt_i <- readRDS(paste0("output/observation_error/", 
+                              OM_scns$id[scns[i_scn]], "/",
+                              "corrected/one-way/", stocks$stock[i_stock], ".rds"))
+      iterMedians(qnt_i$ssb_rel)
+    })
+    names(tmp) <- stocks$stock_short
+    tmp <- as.data.frame(FLQuants(tmp))
+    tmp$scenario <- values[i_scn]
+    return(tmp)
+  })
+  res <- do.call(rbind, res)
+  res <- res %>% mutate(scenario = as.factor(scenario),
+                 stock = qname) %>%
+    full_join(stk_labels) %>% 
+    mutate(label = as.factor(label),
+           label2 = as.factor(label2))
+  res$label <- factor(res$label, levels = levels(res$label)[c(1:19, 21, 20, 22:29)])
+  res$label2 <- factor(res$label2, levels = levels(res$label2)[c(1:19, 21, 20, 22:29)])
+  
+  ### subset stocks
+  if (!missing(stks_subset)) {
+    res <- res %>% filter(stock %in% stks_subset)
+  }
+  
+  ### plot  
+  p <- res %>% 
+    ggplot(aes(x = year - 100, y = data, colour = scenario)) +
+    geom_line() +
+    theme_bw() +
+    facet_wrap(~ label2, labeller = label_parsed, nrow = nrow, ncol = ncol) +
+    labs(x = "year", y = expression("median SSB/B"["MSY"]), 
+         colour = label) +
+    geom_vline(xintercept = 0.5, colour = "darkgrey")
+  return(p)
+}
+
+
+### components
+### get results
+stks <- c("ang", "ang2")
+names(stks) <- stks
+scns <- c("new_baseline", "rev_sel_1", "rev_sel_2",
+                                   "rev_sel_3", "rev_sel_4")
+names(scns) <- scns
+
+### components
+res_comps <- foreach(stock = stks, 
+                    .final = function(x) {
+                      names(x) <- stks
+                    return(x)}) %:%
+              foreach(scenario = scns, 
+                      .final = function(y) {
+                        names(y) <- scns
+                        return(y)
+                      }) %do% {
+  stock_long <- stocks$stock[stocks$stock_short == stock]
+  res_mse <- readRDS(paste0("output/observation_error/", scenario,
+                            "/one-way/", stock_long, ".rds"))
+  res_corrected <- readRDS(paste0("output/observation_error/", scenario,
+                                  "/corrected/one-way/", 
+                                  stock_long, ".rds"))
+  ### get tracking object
+  comps <- res_mse@tracking[c("HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),
+                           ac(seq(from = 99, to = 200, by = 2))]
+  ### find collapses and remove values
+  for (year_i in dimnames(comps)$year) {
+    comps[, year_i,,,, which(res_corrected$ssb[, year_i ] == 0)] <- NA
+  }
+  return(comps)
+}
+
+### components
+res_tracking <- foreach(stock = stks, 
+                    .final = function(x) {
+                      names(x) <- stks
+                    return(x)}) %:%
+              foreach(scenario = scns, 
+                      .final = function(y) {
+                        names(y) <- scns
+                        return(y)
+                      }) %do% {
+  stock_long <- stocks$stock[stocks$stock_short == stock]
+  res_mse <- readRDS(paste0("output/observation_error/", scenario,
+                            "/one-way/", stock_long, ".rds"))
+  res_corrected <- readRDS(paste0("output/observation_error/", scenario,
+                                  "/corrected/one-way/", 
+                                  stock_long, ".rds"))
+  ### get tracking object
+  comps <- res_mse@tracking
+  # comps <- res_mse@tracking[,
+  #                          ac(seq(from = 99, to = 200, by = 2))]
+  ### find collapses and remove values
+  for (year_i in dimnames(comps)$year) {
+    comps[, year_i,,,, which(res_corrected$ssb[, year_i ] == 0)] <- NA
+  }
+  return(comps)
+}
+
+### mse results
+res_mse <- foreach(stock = stks, 
+                    .final = function(x) {
+                      names(x) <- stks
+                    return(x)}) %:%
+              foreach(scenario = scns, 
+                      .final = function(y) {
+                        names(y) <- scns
+                        return(y)
+                      }) %do% {
+  stock_long <- stocks$stock[stocks$stock_short == stock]
+  res_mse <- readRDS(paste0("output/observation_error/", scenario,
+                            "/one-way/", stock_long, ".rds"))
+}
+
+
+plot(brps$rev_sel_1$`ang-ivvi`)
+plot(df_comps$ang2$new_baseline@tracking[c("HCR3.2.1r",
+                                           "HCR3.2.1f",
+                                           "HCR3.2.1b")])
+plot(df_comps$ang2$new_baseline@tracking[c("I_current")])
+df_comps[["ang2"]][["new_baseline"]]@tracking
+
+as.data.frame(catch.n(df_comps[[2]][[5]]@stock)[, ac(75)]) %>%
+  ggplot(x = age, y = data) +
+  geom_boxplot(aes(x = age, y = data, group = age))
+
+### compare ang and ang2 - rev_sel_1
+plot(window(FLStocks(def = res_mse$ang2$new_baseline@stock[,,,,, 6], 
+                     sel_1 = res_mse$ang2$rev_sel_1@stock[,,,,, 6],
+                     sel_2 = res_mse$ang2$rev_sel_2@stock[,,,,, 6]), 
+            start = 100, end = 160))
+### ang vs ang2
+rbind(cbind(as.data.frame(res_comps$ang$rev_sel_1), stock = "ang"),
+      cbind(as.data.frame(res_comps$ang2$rev_sel_1), stock = "ang2")) %>%
+  filter(iter == 6) %>%
+  filter(year %in% 100:160) %>%
+  ggplot(aes(x = year, y = data, colour = stock)) +
+  geom_line() +
+  facet_wrap(~ metric, ncol = 1)
+### default vs sel_1
+rbind(cbind(as.data.frame(res_comps$ang2$new_baseline), stock = "def"),
+      cbind(as.data.frame(res_comps$ang2$rev_sel_1), stock = "sel_1"),
+      cbind(as.data.frame(res_comps$ang2$rev_sel_2), stock = "sel_2")) %>%
+  filter(iter == 6) %>%
+  filter(year %in% 100:160) %>%
+  ggplot(aes(x = year, y = data, colour = stock)) +
+  geom_line() +
+  facet_wrap(~ metric, ncol = 1)
+
+### weird behaviour for iter 6
+### SSB declines, why? CHECK OUT
+
+plot(ssb(res_mse$ang2$rev_sel_1@stock[,,,,, 6]))
+as.data.frame(stock.n(res_mse$ang2$rev_sel_1@stock[,,,,, 6])) %>%
+  filter(year %in% 140:150) %>%
+  ggplot(aes(x = as.numeric(age), y = data)) +
+  geom_col() +
+  facet_wrap(~ year)
+
+
+as.data.frame((stock.n(res_mse$ang2$rev_sel_1@stock) * 
+                stock.wt(res_mse$ang2$rev_sel_1@stock))[,,,,, 6]) %>%
+  filter(year %in% 141:150) %>%
+  ggplot(aes(x = as.numeric(age), y = data)) +
+  geom_col() +
+  facet_wrap(~ year)
+
+
+as.data.frame((catch.n(res_mse$ang2$rev_sel_1@stock) * 
+                catch.wt(res_mse$ang2$rev_sel_1@stock))[,,,,, 6]) %>%
+  filter(year %in% 141:150) %>%
+  ggplot(aes(x = as.numeric(age), y = data)) +
+  geom_col() +
+  facet_wrap(~ year)
+
+
+as.data.frame((catch.n(res_mse$ang2$rev_sel_2@stock))[,,,,, 6]) %>%
+  filter(year %in% 141:150) %>%
+  ggplot(aes(x = as.numeric(age), y = data)) +
+  geom_col() +
+  facet_wrap(~ year)
+as.data.frame((harvest(res_mse$ang2$rev_sel_2@stock))[,,,,, 6]) %>%
+  filter(year %in% 141:150) %>%
+  ggplot(aes(x = as.numeric(age), y = data)) +
+  geom_col() +
+  facet_wrap(~ year)
+
+
+
+
+### ------------------------------------------------------------------------ ###
+### check pollack ####
+### ------------------------------------------------------------------------ ###
+
+### components
+### get results
+stks <- c("pol")
+names(stks) <- stks
+scns <- c("new_baseline", "rev_sel_1", "rev_sel_2",
+                                   "rev_sel_3", "rev_sel_4")
+names(scns) <- scns
+
+### components
+res <- foreach(stock = stks, 
+                    .final = function(x) {
+                      names(x) <- stks
+                    return(x)}) %:%
+              foreach(scenario = scns, 
+                      .final = function(y) {
+                        names(y) <- scns
+                        return(y)
+                      }) %do% {
+  stock_long <- stocks$stock[stocks$stock_short == stock]
+  res_mse <- readRDS(paste0("output/observation_error/", scenario,
+                            "/one-way/", stock_long, ".rds"))
+  res_corrected <- readRDS(paste0("output/observation_error/", scenario,
+                                  "/corrected/one-way/", 
+                                  stock_long, ".rds"))
+  ### get tracking object
+  comps <- res_mse@tracking
+  ### find collapses and remove values
+  for (year_i in dimnames(comps)$year) {
+    comps[, year_i,,,, which(res_corrected$ssb[, year_i ] == 0)] <- NA
+  }
+  list(tracking = comps,
+       comps = comps[c("HCR3.2.1r", "HCR3.2.1f", "HCR3.2.1b"),
+                           ac(seq(from = 99, to = 200, by = 2))],
+       mse = res_mse,
+       corrected = res_corrected)
+  
+}
+
+### sel_1 and sel_2 collapse
+### have highest catch / catch increases in beginning
+i <- 3
+plot(window(FLStocks(def = res$pol$new_baseline$mse@stock[,,,,, i], 
+                     sel_1 = res$pol$rev_sel_1$mse@stock[,,,,, i],
+                     sel_2 = res$pol$rev_sel_2$mse@stock[,,,,, i],
+                     sel_3 = res$pol$rev_sel_3$mse@stock[,,,,, i]), 
+            start = 100, end = 120))
+plot(window(FLQuants(def = res$pol$new_baseline$corrected$ssb_rel[,,,,, i], 
+                     sel_1 = res$pol$rev_sel_1$corrected$ssb_rel[,,,,, i],
+                     sel_2 = res$pol$rev_sel_2$corrected$ssb_rel[,,,,, i])))
+### comps
+df <- rbind(cbind(as.data.frame(res$pol$new_baseline$comps), stock = "default"),
+      cbind(as.data.frame(res$pol$rev_sel_1$comps), stock = "age +1"),
+      cbind(as.data.frame(res$pol$rev_sel_2$comps), stock = "age +2"),
+      cbind(as.data.frame(res$pol$rev_sel_3$comps), stock = "age +3")) %>%
+  mutate(unit = NULL, season = NULL, area = NULL)
+df2 <- df %>% group_by(year, iter, stock) %>%
+  summarise(data = prod(data)) %>%
+  mutate(metric = "prod") %>%
+  bind_rows(df)
+### iter
+df2 %>%
+  filter(iter == 3) %>%
+  filter(year %in% 100:120) %>%
+  ggplot(aes(x = year, y = data, colour = stock)) +
+  geom_line() +
+  facet_wrap(~ metric, ncol = 1)
+### median
+df3 <- df2 %>%
+  group_by(year, stock, metric) %>%
+  summarise(data = median(data, na.rm = TRUE))
+df3$metric <- as.factor(df3$metric)
+levels(df3$metric) <- paste0("italic(", c("b", "f", "r", "rfb"), ")")
+df3$metric <- factor(df3$metric, levels = levels(df3$metric)[c(3, 2, 1, 4)])
+p <- df3 %>%
+  filter(year %in% 99:200) %>%
+  ggplot(aes(x = year - 98, y = data, colour = stock)) +
+  #geom_hline(yintercept = 1, linetype = "dotted", colour = "darkgrey") +
+  geom_line(size = 0.2) +
+  facet_wrap(~ metric, ncol = 2, labeller = label_parsed) +
+  labs(x = "year", y = "component value") +
+  scale_color_discrete("selectivity") +
+  theme_bw() + theme_paper
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "selectivity_components_pol.png"),
+       width = 8.5, height = 8, units = "cm", dpi = 600, type = "cairo")
+p + theme(text = element_text(family = "sans"))
+ggsave(filename = paste0("output/plots/paper_revision/supplementary_material/",
+                         "selectivity_components_pol.pdf"),
+       width = 8.5, height = 8, units = "cm")
+### check delay
+rbind(cbind(as.data.frame(res$pol$new_baseline$corrected$ssb_rel),
+            qnt = "ssb", scn = "def"),
+      cbind(as.data.frame(res$pol$new_baseline$corrected$catch_rel),
+            qnt = "catch", scn = "def"),
+      cbind(as.data.frame(res$pol$rev_sel_1$corrected$ssb_rel),
+            qnt = "ssb", scn = "sel_1"),
+      cbind(as.data.frame(res$pol$rev_sel_1$corrected$catch_rel),
+            qnt = "catch", scn = "sel_1"),
+      cbind(as.data.frame(res$pol$rev_sel_2$corrected$ssb_rel),
+            qnt = "ssb", scn = "sel_2"),
+      cbind(as.data.frame(res$pol$rev_sel_2$corrected$catch_rel),
+            qnt = "catch", scn = "sel_2"),
+      cbind(as.data.frame(res$pol$rev_sel_3$corrected$ssb_rel),
+            qnt = "ssb", scn = "sel_3"),
+      cbind(as.data.frame(res$pol$rev_sel_3$corrected$catch_rel),
+            qnt = "catch", scn = "sel_3")) %>%
+  filter(iter == 3 &
+           year %in% 100:120) %>%
+  ggplot(aes(x = year, y = data, colour = qnt)) +
+  geom_line() +
+  facet_wrap(~ scn)
+### no obvious different lag between selectivity scenarios...
+
+### check brps
+plot(brps$new_baseline$`pol-nsea`)
+plot(brps$rev_sel_1$`pol-nsea`)
+plot(brps$rev_sel_2$`pol-nsea`)
+plot(brps$rev_sel_3$`pol-nsea`)
+
+refpts(brps$new_baseline$`pol-nsea`)
+refpts(brps$rev_sel_1$`pol-nsea`)
+refpts(brps$rev_sel_2$`pol-nsea`)
+refpts(brps$rev_sel_3$`pol-nsea`)
+
+plot(as(brps$new_baseline$`pol-nsea`, "FLStock"))
+plot(as(brps$rev_sel_1$`pol-nsea`, "FLStock"))
+plot(as(brps$rev_sel_2$`pol-nsea`, "FLStock"))
